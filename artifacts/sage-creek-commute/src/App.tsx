@@ -1,44 +1,677 @@
-import { type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clipboard,
+  Download,
+  ExternalLink,
+  KeyRound,
+  LockKeyhole,
+  Mail,
+  MapPin,
+  Menu,
+  Navigation,
+  Phone,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import {
+  EventInputEventName,
+  type AdminResponse,
+  type AdminSummary,
+  type ResponseInput,
+  useCreateEvent,
+  useCreateResponse,
+  useExportAdminResponses,
+  useGetAdminResponses,
+  useGetAdminSummary,
+  useHealthCheck,
+  getGetAdminResponsesQueryKey,
+  getGetAdminSummaryQueryKey,
+} from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import {
-  Route,
-  Switch,
-  useLocation,
-  Router as WouterRouter,
-} from 'wouter';
+import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
+type Role = 'driver' | 'rider';
+type ExitKind = 'location' | 'student' | null;
+type DayName = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
 
-function Home() {
+const days: Array<{ key: DayName; label: string }> = [
+  { key: 'monday', label: 'Mon' },
+  { key: 'tuesday', label: 'Tue' },
+  { key: 'wednesday', label: 'Wed' },
+  { key: 'thursday', label: 'Thu' },
+  { key: 'friday', label: 'Fri' },
+];
+
+const arrivalTimeOptions = Array.from({ length: 33 }, (_, index) => {
+  const totalMinutes = 6 * 60 + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  return formatTime(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+});
+
+const departureTimeOptions = Array.from({ length: 35 }, (_, index) => {
+  const totalMinutes = 6 * 60 + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  return formatTime(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+});
+
+const blankSchedule = days.map(({ key }) => ({
+  day: key,
+  active: true,
+  arrival: '8:30 AM',
+  departure: '4:30 PM',
+}));
+
+const initialResponse: ResponseInput = {
+  role: 'rider',
+  livesInSageCreek: true,
+  isUofMStudent: true,
+  schedule: blankSchedule,
+  arrivalFlexibility: '±15 minutes is fine',
+  departureFlexibility: '±15 minutes is fine',
+  rideDirection: 'To campus only',
+  maxDetour: null,
+  seats: null,
+  maxPickupWalk: '10 minutes',
+  currentTransportMethod: null,
+  currentCommuteDuration: null,
+  minimumMonthlyCompensation: null,
+  maximumMonthlyWillingnessToPay: null,
+  scheduleChangeFrequency: 'A few times a month',
+  dealbreaker: '',
+  dealbreakerOther: null,
+  intentLevel: '',
+  email: null,
+  phone: null,
+  prefersText: false,
+  utmSource: null,
+  utmMedium: null,
+  utmCampaign: null,
+  referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+};
+
+function trackEvent(
+  mutate: ReturnType<typeof useCreateEvent>['mutate'],
+  eventName: EventInputEventName,
+  role?: Role,
+  step?: number,
+) {
+  mutate({ data: { eventName, role: role ?? null, step: step ?? null } });
+}
+
+function Brand({ light = false }: { light?: boolean }) {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Replit Agent is building...
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Your app will appear here once it's ready.
-        </p>
+    <span className={`brand-mark ${light ? 'brand-light' : ''}`}>
+      <span className="brand-dot" />
+      <span>Sage Creek <i>Commute</i></span>
+    </span>
+  );
+}
+
+function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <header className="relative z-20 py-5">
+      <div className="container-wide flex items-center justify-between">
+        <Link href="/" className="no-underline" data-testid="link-brand-home">
+          <Brand />
+        </Link>
+        <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
+          <a href="#how-it-works" className="nav-link" data-testid="link-how-it-works">How it works</a>
+          <a href="#why-now" className="nav-link" data-testid="link-why-now">Why this</a>
+          <Link href="/admin" className="nav-link" data-testid="link-admin">Admin</Link>
+           <button onClick={() => onStart('rider')} className="btn-primary compact" data-testid="button-header-start">
+            Take the 3-minute check <ArrowRight size={15} />
+          </button>
+        </nav>
+        <button
+          className="menu-button md:hidden"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label="Open navigation"
+          data-testid="button-open-menu"
+        >
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+      {menuOpen && (
+        <div className="mobile-menu md:hidden">
+          <a href="#how-it-works" onClick={() => setMenuOpen(false)} data-testid="link-mobile-how">How it works</a>
+          <a href="#why-now" onClick={() => setMenuOpen(false)} data-testid="link-mobile-why">Why this</a>
+          <Link href="/admin" data-testid="link-mobile-admin">Admin</Link>
+           <button onClick={() => { setMenuOpen(false); onStart('rider'); }} data-testid="button-mobile-start">Take the check <ArrowRight size={15} /></button>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function RouteIllustration() {
+  return (
+    <div className="route-card fade-up delay-2" aria-label="Illustration of the commute from Sage Creek to the University of Manitoba">
+      <div className="route-grid" />
+      <div className="route-line" />
+      <span className="map-label home">SAGE CREEK</span>
+      <span className="map-label uni">U OF M</span>
+      <div className="route-pin pin-one"><MapPin size={17} /></div>
+      <div className="route-pin pin-two"><Navigation size={17} /></div>
+      <div className="route-card-content">
+        <div>
+          <span className="eyebrow route-eyebrow">One local route</span>
+          <p>Make the trip to campus easier to plan, together.</p>
+        </div>
+        <div className="route-chip"><ArrowRight size={22} /></div>
       </div>
     </div>
   );
 }
 
-function Router() {
+function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
+  const createEvent = useCreateEvent();
+  useEffect(() => {
+    trackEvent(createEvent.mutate, EventInputEventName.landing_viewed);
+  }, []);
+
   return (
-    // Keep a shared shell (sidebar, navbar) outside the boundary so it
-    // survives a page crash.
-    <RoutedErrorBoundary>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route component={NotFound} />
-      </Switch>
-    </RoutedErrorBoundary>
+    <main className="site-shell">
+      <PublicHeader onStart={onStart} />
+      <section className="hero-section">
+        <div className="container-wide hero-grid">
+          <div className="hero-copy">
+             <div className="eyebrow fade-up">Built around your actual class schedule</div>
+             <h1 className="display-xl fade-up delay-1">Same neighbourhood.<br /><em>Same campus.</em><br />Better commute.</h1>
+            <p className="hero-lede fade-up delay-2">
+               We’re seeing if U of M students in Sage Creek can be matched for recurring rides based on where they live and when they actually go to campus.
+            </p>
+            <div className="hero-actions fade-up delay-3">
+               <button onClick={() => onStart('driver')} className="btn-primary" data-testid="button-hero-driver">
+                 I drive to U of M <ArrowRight size={17} />
+               </button>
+               <button onClick={() => onStart('rider')} className="btn-quiet hero-secondary" data-testid="button-hero-rider">
+                 I need rides <ArrowRight size={17} />
+               </button>
+               <span className="quiet-note"><ShieldCheck size={15} /> Takes about a minute · no commitment</span>
+            </div>
+          </div>
+          <RouteIllustration />
+        </div>
+      </section>
+
+      <div className="container-wide">
+        <div className="stat-strip">
+          <div className="stat-cell"><div className="stat-num">01 / 03</div><div className="stat-label">Tell us how your week moves</div></div>
+          <div className="stat-cell"><div className="stat-num">LOCAL</div><div className="stat-label">Built around Sage Creek to U of M</div></div>
+           <div className="stat-cell"><div className="stat-num">PRIVATE</div><div className="stat-label">Your details stay with this project</div></div>
+        </div>
+      </div>
+
+      <section id="how-it-works" className="section-pad">
+        <div className="container-wide feature-layout">
+          <div>
+            <div className="eyebrow">How it works</div>
+            <h2 className="display-lg mt-5">Less guessing.<br /><em>More arriving.</em></h2>
+          </div>
+          <div className="feature-list">
+            <Feature number="01" title="Map your real week" body="A short, one-question-at-a-time check-in. Tell us when you actually head out, not when your timetable says you should." />
+             <Feature number="02" title="See the useful overlap" body="We look for practical windows where a driver and rider could share a route — without promising a match that does not exist yet." />
+             <Feature number="03" title="Make the details work" body="Your answers set the details: pickup walk, flexibility, cost, and the small things that make a commute work." />
+          </div>
+        </div>
+      </section>
+
+      <section id="why-now" className="why-section">
+        <div className="container-wide why-grid">
+          <div className="why-stamp"><Sparkles size={19} /><span>Made for the<br /><strong>in-between</strong> moments</span></div>
+          <div>
+            <div className="eyebrow">The point</div>
+            <h2 className="display-lg mt-5">Campus is not<br />the hard part.</h2>
+             <p className="body-copy">It is the 7:42 departure. The long walk in January. The bus that turns one connection into three. Sage Creek Commute is a small, local way to make those details easier to solve.</p>
+             <button onClick={() => onStart('rider')} className="text-link" data-testid="button-why-start">Start with your week <ChevronRight size={16} /></button>
+          </div>
+        </div>
+      </section>
+
+      <footer className="site-footer">
+        <div className="container-wide footer-row">
+          <Brand />
+          <span>For Sage Creek students, by a local team.</span>
+          <Link href="/admin" className="footer-admin" data-testid="link-footer-admin">Private admin <ExternalLink size={13} /></Link>
+        </div>
+      </footer>
+    </main>
   );
+}
+
+function Feature({ number, title, body }: { number: string; title: string; body: string }) {
+  return (
+    <article className="feature-item">
+      <span className="feature-number">{number}</span>
+      <div><h3>{title}</h3><p>{body}</p></div>
+    </article>
+  );
+}
+
+function Choice({
+  label,
+  detail,
+  selected,
+  onClick,
+  testId,
+}: {
+  label: string;
+  detail?: string;
+  selected: boolean;
+  onClick: () => void;
+  testId: string;
+}) {
+  return (
+    <button className={`choice ${selected ? 'selected' : ''}`} onClick={onClick} data-testid={testId} aria-pressed={selected}>
+      <span><span className="choice-label">{label}</span>{detail && <span className="choice-detail">{detail}</span>}</span>
+      <span className="choice-check">{selected && <Check size={14} strokeWidth={3} />}</span>
+    </button>
+  );
+}
+
+function QuestionFrame({
+  step,
+  total,
+  kicker,
+  title,
+  subtitle,
+  children,
+  canContinue,
+  onBack,
+  onContinue,
+  continueLabel = 'Continue',
+  pending = false,
+}: {
+  step: number;
+  total: number;
+  kicker: string;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  canContinue: boolean;
+  onBack: () => void;
+  onContinue: () => void;
+  continueLabel?: string;
+  pending?: boolean;
+}) {
+  return (
+    <div className="question-shell">
+      <div className="question-top">
+        <div className="question-nav-row">
+          <Link href="/" className="question-brand" data-testid="link-question-brand"><Brand /></Link>
+          <span className="step-count font-mono-custom">0{step + 1} <span>/ {String(total).padStart(2, '0')}</span></span>
+        </div>
+        <div className="progress-track" aria-label={`Step ${step + 1} of ${total}`}><div className="progress-fill" style={{ width: `${((step + 1) / total) * 100}%` }} /></div>
+      </div>
+      <main className="question-main" key={`${step}-${title}`}>
+        <div className="eyebrow">{kicker}</div>
+        <h1 className="question-title mt-5">{title}</h1>
+        {subtitle && <p className="question-subtitle">{subtitle}</p>}
+        {children}
+        <div className="question-actions">
+          <button className="back-action" onClick={onBack} data-testid="button-question-back"><ArrowLeft size={16} /> Back</button>
+          <button className="btn-primary" onClick={onContinue} disabled={!canContinue || pending} data-testid="button-question-continue">
+            {pending ? 'Saving…' : continueLabel} {!pending && <ArrowRight size={17} />}
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function QualificationExit({ kind, onReset }: { kind: ExitKind; onReset: () => void }) {
+  const isLocation = kind === 'location';
+  return (
+    <div className="question-shell">
+      <div className="question-top"><div className="question-nav-row"><Link href="/" className="question-brand" data-testid="link-exit-brand"><Brand /></Link><span className="eyebrow">A quick note</span></div><div className="progress-track"><div className="progress-fill" style={{ width: '17%' }} /></div></div>
+      <main className="question-main">
+        <div className="eyebrow">Not quite the right route</div>
+        <h1 className="question-title mt-5">{isLocation ? 'This first version is focused on Sage Creek.' : 'This list is for U of M students.'}</h1>
+        <div className="exit-card">
+          <p>{isLocation ? 'We are keeping this experience deliberately local: Sage Creek to the University of Manitoba. If that changes, we would love to hear from you.' : 'We are focused on the student commute between Sage Creek and the University of Manitoba for now. Thanks for checking.'}</p>
+          <button className="btn-quiet mt-6" onClick={onReset} data-testid="button-qualification-restart">Start over <RefreshCw size={15} /></button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function ScheduleEditor({ schedule, onChange }: { schedule: ResponseInput['schedule']; onChange: (schedule: ResponseInput['schedule']) => void }) {
+  const updateDay = (day: DayName, patch: Partial<ResponseInput['schedule'][number]>) => {
+    onChange(schedule.map((entry) => entry.day === day ? { ...entry, ...patch } : entry));
+  };
+  return (
+    <div className="schedule-table">
+      <div className="schedule-row head"><span>Day</span><span>Arrive campus</span><span>Leave campus</span></div>
+      {days.map(({ key, label }) => {
+        const current = schedule.find((entry) => entry.day === key) ?? blankSchedule[0];
+        return (
+          <div className="schedule-row" key={key}>
+            <div className="day-toggle"><button className={`switch ${current.active ? 'on' : ''}`} onClick={() => updateDay(key, { active: !current.active })} aria-label={`${current.active ? 'Remove' : 'Add'} ${label}`} data-testid={`button-toggle-${key}`} /><span>{label}</span></div>
+            <select value={current.arrival} disabled={!current.active} onChange={(event) => updateDay(key, { arrival: event.target.value })} aria-label={`${label} arrival`} data-testid={`select-arrival-${key}`}>
+               {arrivalTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}
+            </select>
+            <select value={current.departure} disabled={!current.active} onChange={(event) => updateDay(key, { departure: event.target.value })} aria-label={`${label} departure`} data-testid={`select-departure-${key}`}>
+               {departureTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}
+            </select>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatTime(time: string) {
+  const [hourString, minute] = time.split(':');
+  const hour = Number(hourString);
+  return `${hour > 12 ? hour - 12 : hour || 12}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function ContactFields({ form, update }: { form: ResponseInput; update: (patch: Partial<ResponseInput>) => void }) {
+  const contactValid = Boolean(form.email || form.phone);
+  return (
+    <div className="contact-fields">
+      <div className="contact-note"><ShieldCheck size={16} /><span>Leave an email, phone number, or both. We’ll only use it for this Sage Creek U of M project.</span></div>
+      <div className="field"><label htmlFor="email"><Mail size={14} /> Email <span className="optional">or phone below</span></label><input id="email" type="email" value={form.email ?? ''} onChange={(event) => update({ email: event.target.value || null })} placeholder="you@example.com" data-testid="input-email" /></div>
+      <div className="field"><label htmlFor="phone"><Phone size={14} /> Phone <span className="optional">or email above</span></label><input id="phone" type="tel" value={form.phone ?? ''} onChange={(event) => update({ phone: event.target.value || null })} placeholder="204 555 0142" data-testid="input-phone" /></div>
+      <button className={`text-toggle ${form.prefersText ? 'selected' : ''}`} onClick={() => update({ prefersText: !form.prefersText })} data-testid="button-prefers-text" aria-pressed={form.prefersText}>
+        <span className="toggle-box">{form.prefersText && <Check size={13} />}</span> Text is best for me
+      </button>
+      {!contactValid && <p className="field-error">Add an email or phone number to continue.</p>}
+    </div>
+  );
+}
+
+function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role; onComplete: (response: ResponseInput) => void; onExit: () => void }) {
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState<ResponseInput>({ ...initialResponse, role: initialRole });
+  const [exitKind, setExitKind] = useState<ExitKind>(null);
+  const createResponse = useCreateResponse();
+  const createEvent = useCreateEvent();
+  const total = 11;
+  const update = (patch: Partial<ResponseInput>) => setForm((previous) => ({ ...previous, ...patch }));
+
+  const reset = () => {
+    setForm({ ...initialResponse, role: initialRole, schedule: blankSchedule.map((entry) => ({ ...entry })) });
+    setStep(0);
+    setExitKind(null);
+  };
+
+  const goBack = () => {
+    if (step === 0) { onExit(); return; }
+    setStep((current) => current - 1);
+  };
+
+  const canContinue = useMemo(() => {
+    if (step === 2) return form.schedule.some((day) => day.active);
+    if (step === 3) return Boolean(form.arrivalFlexibility && form.departureFlexibility);
+    if (step === 5) return form.role === 'driver'
+      ? Boolean(form.maxDetour && form.seats)
+      : Boolean(form.maxPickupWalk && form.currentTransportMethod && form.currentCommuteDuration);
+    if (step === 7) return form.role === 'driver'
+      ? Boolean(form.minimumMonthlyCompensation)
+      : Boolean(form.maximumMonthlyWillingnessToPay);
+    if (step === 10) return Boolean(form.email || form.phone);
+    return true;
+  }, [form, step]);
+
+  const next = () => {
+    if (!canContinue) return;
+    if (step === 0 && !form.livesInSageCreek) { setExitKind('location'); return; }
+    if (step === 1 && !form.isUofMStudent) { setExitKind('student'); return; }
+    if (step === 10) {
+      const search = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      const payload: ResponseInput = {
+        ...form,
+        utmSource: search.get('utm_source'),
+        utmMedium: search.get('utm_medium'),
+        utmCampaign: search.get('utm_campaign'),
+        referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+      };
+      createResponse.mutate({ data: payload }, {
+        onSuccess: () => onComplete(payload),
+      });
+      trackEvent(createEvent.mutate, EventInputEventName.form_completed, form.role, 11);
+      return;
+    }
+    setStep((current) => current + 1);
+    trackEvent(createEvent.mutate, EventInputEventName.step_reached, form.role, step + 2);
+  };
+
+  if (exitKind) return <QualificationExit kind={exitKind} onReset={reset} />;
+
+  const roleLabel = form.role === 'driver' ? 'Driving to campus' : 'Looking for a ride';
+  if (step === 0) return <QuestionFrame step={step} total={total} kicker="First, your commute" title="Do you currently live in Sage Creek?" subtitle="This list is focused on the route between Sage Creek and the University of Manitoba." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      <Choice label="Yes, I do" selected={form.livesInSageCreek} onClick={() => update({ livesInSageCreek: true })} testId="choice-lives-yes" />
+      <Choice label="No, not currently" selected={!form.livesInSageCreek} onClick={() => update({ livesInSageCreek: false })} testId="choice-lives-no" />
+    </div>
+  </QuestionFrame>;
+
+  if (step === 1) return <QuestionFrame step={step} total={total} kicker="One more check" title="Are you currently a U of M student?" subtitle="This list is for students making this commute to the Fort Garry campus." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      <Choice label="Yes, I am" selected={form.isUofMStudent} onClick={() => update({ isUofMStudent: true })} testId="choice-student-yes" />
+      <Choice label="No, not currently" selected={!form.isUofMStudent} onClick={() => update({ isUofMStudent: false })} testId="choice-student-no" />
+    </div>
+  </QuestionFrame>;
+
+  if (step === 2) return <QuestionFrame step={step} total={total} kicker="Your actual week" title="When are you usually on campus?" subtitle="Your schedule can be completely different each day. Choose your usual arrival and departure times." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <ScheduleEditor schedule={form.schedule} onChange={(schedule) => update({ schedule })} />
+    <p className="field-note mt-4">You can leave a day off if you are not usually on campus.</p>
+  </QuestionFrame>;
+
+  if (step === 3) return <QuestionFrame step={step} total={total} kicker="Flexibility" title="How flexible are you with your campus times?" subtitle="A little flexibility can make it much easier to find a practical overlap." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['Need to be within about 10 minutes', '±15 minutes is fine', '±30 minutes is fine', 'I’m pretty flexible'].map((value) => <Choice key={value} label={value} selected={form.arrivalFlexibility === value} onClick={() => update({ arrivalFlexibility: value })} testId={`choice-arrival-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+    <p className="field-label mt-6">How flexible are you with when you leave campus?</p>
+    <div className="choice-grid">
+      {['Need to be within about 10 minutes', '±15 minutes is fine', '±30 minutes is fine', 'I’m pretty flexible'].map((value) => <Choice key={value} label={value} selected={form.departureFlexibility === value} onClick={() => update({ departureFlexibility: value })} testId={`choice-departure-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  if (step === 4) return <QuestionFrame step={step} total={total} kicker="Direction" title="Which rides would actually be useful to you?" subtitle="Choose the direction that would help most on your usual week." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['To campus only', 'Home only', 'Both directions', 'Depends on the day'].map((value) => <Choice key={value} label={value} selected={form.rideDirection === value} onClick={() => update({ rideDirection: value })} testId={`choice-direction-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  if (step === 5 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="The driver side" title="What would you realistically offer?" subtitle="Keep your normal commute in mind — we are asking about the most you would be comfortable adding." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['0–2 minutes', '3–5 minutes', '6–10 minutes', '10+ minutes', 'I wouldn’t detour'].map((value) => <Choice key={value} label={value} selected={form.maxDetour === value} onClick={() => update({ maxDetour: value })} testId={`choice-detour-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+    <p className="field-label mt-6">How many seats would you realistically offer?</p>
+    <div className="choice-grid">
+      {['1', '2', '3+'].map((value) => <Choice key={value} label={value} selected={form.seats === value} onClick={() => update({ seats: value })} testId={`choice-seats-${value}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  if (step === 5) return <QuestionFrame step={step} total={total} kicker="The rider side" title="What would make a pickup convenient?" subtitle="Think about the distance and habits that would actually work on a class day." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['Doorstep only', '2–3 minute walk', '5 minute walk', '10 minute walk'].map((value) => <Choice key={value} label={value} selected={form.maxPickupWalk === value} onClick={() => update({ maxPickupWalk: value })} testId={`choice-walk-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+    <p className="field-label mt-6">How do you usually get to U of M right now?</p>
+    <div className="choice-grid">
+      {['Bus', 'Family or friend drives me', 'Uber / taxi', 'I drive myself', 'A mix of these'].map((value) => <Choice key={value} label={value} selected={form.currentTransportMethod === value} onClick={() => update({ currentTransportMethod: value })} testId={`choice-transport-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+    <div className="field"><label htmlFor="duration">How long does your current one-way commute usually take?</label><select id="duration" value={form.currentCommuteDuration ?? ''} onChange={(event) => update({ currentCommuteDuration: event.target.value })} data-testid="select-commute-duration"><option value="">Choose one</option><option>Under 20 minutes</option><option>20–30 minutes</option><option>30–45 minutes</option><option>45–60 minutes</option><option>60+ minutes</option></select></div>
+  </QuestionFrame>;
+
+  if (step === 6) return <QuestionFrame step={step} total={total} kicker="Real life scheduling" title="How often do your campus plans change unexpectedly on the same day?" subtitle="We are designing around real student weeks, not a perfect calendar." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['Almost never', 'Maybe once a month', 'A few times a month', 'About once a week', 'Multiple times a week'].map((value) => <Choice key={value} label={value} selected={form.scheduleChangeFrequency === value} onClick={() => update({ scheduleChangeFrequency: value })} testId={`choice-schedule-change-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  if (step === 7 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="What feels fair" title="What’s the minimum you’d want per month to regularly take one nearby student on days you’re already driving?" subtitle="Choose the lowest amount that would make the coordination worth it. There is no recommended answer." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['$20–39', '$40–59', '$60–79', '$80–99', '$100–124', '$125+', 'I wouldn’t do it'].map((value) => <Choice key={value} label={value} selected={form.minimumMonthlyCompensation === value} onClick={() => update({ minimumMonthlyCompensation: value })} testId={`choice-compensation-${value.replace(/\W/g, '').toLowerCase()}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  if (step === 7) return <QuestionFrame step={step} total={total} kicker="What feels worth paying" title="What’s the MOST you’d realistically pay per month?" subtitle="Assume you are usually matched with the same U of M student driver, your schedules fit, and you do not need to book individual rides every day." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['Under $40', '$40–59', '$60–79', '$80–99', '$100–124', '$125–149', '$150+', 'I wouldn’t pay'].map((value) => <Choice key={value} label={value} selected={form.maximumMonthlyWillingnessToPay === value} onClick={() => update({ maximumMonthlyWillingnessToPay: value })} testId={`choice-willingness-${value.replace(/\W/g, '').toLowerCase()}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  if (step === 8) return <QuestionFrame step={step} total={total} kicker="The dealbreaker" title={`What would be most likely to stop you from ${form.role === 'driver' ? 'doing this' : 'using this'}?`} subtitle="Knowing the boundary is just as helpful as knowing the ideal." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {(form.role === 'driver' ? ['Rider being late', 'Extra driving time', 'Having someone I don’t know in my car', 'Compensation being too low', 'My schedule changes too much', 'Insurance / liability concerns', 'Other'] : ['Driver cancellations', 'Being late to class', 'Riding with someone I don’t know', 'Price', 'Pickup inconvenience', 'My schedule changes too much', 'Other']).map((value) => <Choice key={value} label={value} selected={form.dealbreaker === value} onClick={() => update({ dealbreaker: value, dealbreakerOther: value === 'Other' ? form.dealbreakerOther : null })} testId={`choice-dealbreaker-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+    {form.dealbreaker === 'Other' && <div className="field"><label htmlFor="other-dealbreaker">Tell us a little more</label><input id="other-dealbreaker" value={form.dealbreakerOther ?? ''} onChange={(event) => update({ dealbreakerOther: event.target.value || null })} placeholder="Optional" data-testid="input-dealbreaker-other" /></div>}
+  </QuestionFrame>;
+
+  if (step === 9) return <QuestionFrame step={step} total={total} kicker="Actual intent" title={form.role === 'driver' ? 'If we found a U of M student in Sage Creek whose location and schedule genuinely matched yours, would you try it for a month?' : 'If we found a Sage Creek driver whose schedule genuinely matched yours, would you try it for a month?'} subtitle="Choose the answer that feels most honest." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      {['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <Choice key={value} label={value} selected={form.intentLevel === value} onClick={() => update({ intentLevel: value })} testId={`choice-intent-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
+    </div>
+  </QuestionFrame>;
+
+  return <QuestionFrame step={step} total={total} kicker={`You are ${roleLabel.toLowerCase()}`} title="Where should we send a note?" subtitle="We will only use this for Sage Creek Commute updates. No newsletter, no noise." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Send my answers" pending={createResponse.isPending}>
+    <ContactFields form={form} update={update} />
+    {createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}
+  </QuestionFrame>;
+}
+
+function SuccessPage({ response }: { response: ResponseInput }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const shareData = { title: 'Sage Creek Commute', text: 'A more practical way to get from Sage Creek to U of M.', url: window.location.href };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else { await navigator.clipboard?.writeText(window.location.href); setCopied(true); }
+    } catch {
+      // A cancelled native share is not an error state for the experience.
+    }
+  };
+  return (
+    <div className="question-shell">
+      <div className="question-top"><div className="question-nav-row"><Link href="/" className="question-brand" data-testid="link-success-brand"><Brand /></Link><span className="eyebrow">All set</span></div><div className="progress-track"><div className="progress-fill" style={{ width: '100%' }} /></div></div>
+      <main className="question-main success-main">
+        <div className="success-mark"><CheckCircle2 size={34} /></div>
+        <div className="eyebrow">Thanks for making the route clearer</div>
+         <h1 className="question-title mt-5">You’re on the<br /><em>Sage Creek list.</em></h1>
+         <p className="question-subtitle">We’re comparing real Sage Creek commute schedules to see where drivers and riders actually line up. If your commute has compatible matches, we’ll reach out.</p>
+         <div className="success-summary">
+           <div className="eyebrow">Your commute</div>
+           {response.schedule.filter((day) => day.active).map((day) => <div className="summary-line" key={day.day}><span>{day.day.slice(0, 3)}</span><strong>{day.arrival}</strong><span>→</span><strong>{day.departure}</strong></div>)}
+         </div>
+         <p className="share-prompt">Know another U of M student in Sage Creek?</p>
+        <div className="success-actions">
+          <button className="btn-primary" onClick={share} data-testid="button-share-commute">{copied ? 'Link copied' : 'Share with a Sage Creek friend'} {copied ? <Check size={16} /> : <Clipboard size={16} />}</button>
+          <Link href="/" className="btn-quiet" data-testid="link-success-home">Back to Sage Creek Commute</Link>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function Distribution({ title, items }: { title: string; items?: Array<{ label: string; count: number }> }) {
+  const safeItems = items ?? [];
+  const max = Math.max(...safeItems.map((item) => item.count), 1);
+  return <div className="admin-card"><h3>{title}</h3>{safeItems.length ? safeItems.map((item) => <div className="bar-row" key={item.label} data-testid={`distribution-${title.replace(/\W/g, '-').toLowerCase()}-${item.label.replace(/\W/g, '-').toLowerCase()}`}><span>{item.label}</span><div className="bar"><span style={{ width: `${(item.count / max) * 100}%` }} /></div><strong>{item.count}</strong></div>) : <p className="empty-admin">No responses yet.</p>}</div>;
+}
+
+function AdminLogin({ password, setPassword, onUnlock, error }: { password: string; setPassword: (value: string) => void; onUnlock: () => void; error?: boolean }) {
+  return <main className="admin-login"><div className="admin-login-card"><div className="admin-lock"><LockKeyhole size={21} /></div><div className="eyebrow">Private workspace</div><h1 className="display-lg mt-4">Results, without<br /><em>the noise.</em></h1><p className="body-copy">Enter the admin password to view grouped validation signals and raw response data.</p><form onSubmit={(event) => { event.preventDefault(); onUnlock(); }} className="admin-login-form"><label htmlFor="admin-password">Admin password</label><div className="password-input"><KeyRound size={16} /><input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" autoComplete="current-password" data-testid="input-admin-password" /></div>{error && <p className="field-error">That password did not work. Try again.</p>}<button className="btn-primary w-full mt-4" type="submit" data-testid="button-admin-unlock">Unlock dashboard <ArrowRight size={16} /></button></form><Link href="/" className="admin-back-link" data-testid="link-admin-back"><ArrowLeft size={14} /> Back to public page</Link></div></main>;
+}
+
+function AdminDashboard({ password }: { password: string }) {
+  const [filter, setFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | Role>('all');
+  const [weekdayFilter, setWeekdayFilter] = useState('all');
+  const [arrivalFilter, setArrivalFilter] = useState('all');
+  const [intentFilter, setIntentFilter] = useState('all');
+  const [priceFilter, setPriceFilter] = useState('all');
+  const request = useMemo(() => ({ headers: { 'X-Admin-Password': password } }), [password]);
+  const summaryQuery = useGetAdminSummary({ query: { enabled: Boolean(password), queryKey: getGetAdminSummaryQueryKey() }, request });
+  const responsesQuery = useGetAdminResponses({ query: { enabled: Boolean(password), queryKey: getGetAdminResponsesQueryKey() }, request });
+  const exportQuery = useExportAdminResponses({ query: { enabled: false, queryKey: ['/api/admin/export.csv'] }, request });
+  const healthQuery = useHealthCheck({ query: { queryKey: ['/api/healthz'] } });
+  const summary = summaryQuery.data as AdminSummary | undefined;
+  const responses = (responsesQuery.data ?? []) as AdminResponse[];
+  const filtered = useMemo(() => responses.filter((response) => {
+    const matchesRole = roleFilter === 'all' || response.role === roleFilter;
+    const haystack = `${response.email ?? ''} ${response.phone ?? ''} ${response.currentTransportMethod ?? ''} ${response.dealbreaker}`.toLowerCase();
+    const matchesWeekday = weekdayFilter === 'all' || response.schedule.some((day) => day.day === weekdayFilter && day.active);
+    const matchesArrival = arrivalFilter === 'all' || response.schedule.some((day) => day.active && day.arrival === arrivalFilter);
+    const price = response.role === 'driver' ? response.minimumMonthlyCompensation : response.maximumMonthlyWillingnessToPay;
+    const matchesIntent = intentFilter === 'all' || response.intentLevel === intentFilter;
+    const matchesPrice = priceFilter === 'all' || price === priceFilter;
+    return matchesRole && matchesWeekday && matchesArrival && matchesIntent && matchesPrice && haystack.includes(filter.toLowerCase());
+  }), [responses, filter, roleFilter, weekdayFilter, arrivalFilter, intentFilter, priceFilter]);
+
+  const download = async () => {
+    const result = await exportQuery.refetch();
+    if (result.data) {
+      const blob = new Blob([result.data], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = 'sage-creek-responses.csv'; anchor.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  if (summaryQuery.isLoading || responsesQuery.isLoading) return <AdminLoading />;
+  if (summaryQuery.isError || responsesQuery.isError) return <AdminError onRetry={() => { void summaryQuery.refetch(); void responsesQuery.refetch(); }} />;
+
+  const total = summary?.total ?? responses.length;
+  return <main className="admin-wrap"><div className="container-wide">
+    <div className="admin-header"><div><Link href="/" className="question-brand" data-testid="link-admin-dashboard-brand"><Brand /></Link><div className="eyebrow mt-10">Private results dashboard</div><h1 className="display-lg mt-3">The shape of<br /><em>the commute.</em></h1></div><div className="admin-header-actions"><span className="health-pill"><span className={`health-dot ${healthQuery.data?.status === 'ok' ? 'live' : ''}`} /> API {healthQuery.data?.status ?? 'checking'}</span><button onClick={download} className="btn-quiet" disabled={exportQuery.isFetching} data-testid="button-export-csv"><Download size={16} /> {exportQuery.isFetching ? 'Preparing…' : 'Export CSV'}</button></div></div>
+    <div className="admin-stat-grid"><AdminStat value={total} label="total responses" /><AdminStat value={summary?.drivers ?? 0} label="drivers" accent /><AdminStat value={summary?.riders ?? 0} label="riders" /><AdminStat value={(summary?.interestedDrivers ?? 0) + (summary?.interestedRiders ?? 0)} label="definitely / probably" accent /></div>
+    <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Grouped signals</div><h2>What students are telling us</h2></div><span className="data-note">Updates on refresh</span></div></div>
+     <div className="admin-grid mt-5"><Distribution title="Compensation · drivers" items={summary?.driverCompensation} /><Distribution title="Willingness to pay · riders" items={summary?.riderWillingness} /><Distribution title="Active by weekday" items={summary?.weekdayActivity} /><Distribution title="Arrival times" items={summary?.arrivalDistribution} /><Distribution title="Current transport" items={summary?.transportMethods} /><Distribution title="Current commute duration" items={summary?.commuteDurations} /><Distribution title="Schedule reliability" items={summary?.reliability} /><Distribution title="Dealbreakers · all roles" items={[...(summary?.driverDealbreakers ?? []), ...(summary?.riderDealbreakers ?? [])]} /></div>
+    <div className="admin-card mt-5"><div className="section-heading"><div><div className="eyebrow">Potential overlap</div><h3 className="mt-2">Where driver and rider schedules may line up</h3></div><span className="data-note">day / arrival window</span></div><div className="overlap-grid mt-5">{(summary?.potentialOverlap ?? []).length ? summary?.potentialOverlap.map((bucket) => <div className="overlap-cell" key={`${bucket.day}-${bucket.time}`}><span>{bucket.day.slice(0, 3)}</span><strong>{bucket.time}</strong><small><b>{bucket.drivers}</b> drivers · <b>{bucket.riders}</b> riders</small></div>) : <p className="empty-admin">Overlap buckets will appear after the first responses.</p>}</div></div>
+     <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Raw responses</div><h2>Every answer, searchable</h2></div><span className="data-note">{filtered.length} shown</span></div><div className="response-filters mt-5"><input className="admin-input" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search contact, transport, objection…" data-testid="input-response-filter" /><select className="admin-input" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as 'all' | Role)} data-testid="select-response-role"><option value="all">All roles</option><option value="driver">Drivers</option><option value="rider">Riders</option></select><select className="admin-input" value={weekdayFilter} onChange={(event) => setWeekdayFilter(event.target.value)} data-testid="select-response-weekday"><option value="all">Any weekday</option>{days.map((day) => <option value={day.key} key={day.key}>{day.label}</option>)}</select><select className="admin-input" value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)} data-testid="select-response-arrival"><option value="all">Any arrival</option>{arrivalTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}</select><select className="admin-input" value={intentFilter} onChange={(event) => setIntentFilter(event.target.value)} data-testid="select-response-intent"><option value="all">Any intent</option>{['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <option value={value} key={value}>{value}</option>)}</select><select className="admin-input" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)} data-testid="select-response-price"><option value="all">Any price bucket</option>{[...(summary?.driverCompensation ?? []), ...(summary?.riderWillingness ?? [])].map((item) => <option value={item.label} key={item.label}>{item.label}</option>)}</select></div></div>
+    <div className="response-table-wrap mt-5"><table className="response-table"><thead><tr><th>Date</th><th>Role</th><th>Route</th><th>Intent</th><th>Transport</th><th>Contact</th></tr></thead><tbody>{filtered.map((response) => <tr key={response.id} data-testid={`row-response-${response.id}`}><td>{new Date(response.createdAt).toLocaleDateString()}</td><td><span className={`role-pill ${response.role}`}>{response.role}</span></td><td>{response.rideDirection}</td><td>{response.intentLevel}</td><td>{response.currentTransportMethod ?? '—'}</td><td>{response.email ?? response.phone ?? '—'}</td></tr>)}{!filtered.length && <tr><td colSpan={6} className="empty-table">No responses match this filter.</td></tr>}</tbody></table></div>
+  </div></main>;
+}
+
+function AdminStat({ value, label, accent = false }: { value: number; label: string; accent?: boolean }) {
+  return <div className={`admin-stat ${accent ? 'accent' : ''}`}><strong>{value}</strong><span>{label}</span></div>;
+}
+
+function AdminLoading() {
+  return <main className="admin-wrap"><div className="container-wide"><div className="skeleton-brand" /><div className="skeleton-line wide mt-14" /><div className="skeleton-line medium mt-4" /><div className="admin-stat-grid mt-12">{[1, 2, 3, 4].map((item) => <div className="skeleton-box" key={item} />)}</div><div className="admin-grid mt-8">{[1, 2, 3, 4].map((item) => <div className="skeleton-box tall" key={item} />)}</div></div></main>;
+}
+
+function AdminError({ onRetry }: { onRetry: () => void }) {
+  return <main className="admin-login"><div className="admin-login-card"><div className="admin-lock error"><RefreshCw size={21} /></div><div className="eyebrow">Could not load results</div><h1 className="display-lg mt-4">The dashboard<br /><em>needs a retry.</em></h1><p className="body-copy">Check the admin server and password, then try the request again.</p><button className="btn-primary w-full mt-5" onClick={onRetry} data-testid="button-admin-retry">Try again <RefreshCw size={16} /></button><Link href="/" className="admin-back-link" data-testid="link-admin-error-back"><ArrowLeft size={14} /> Back to public page</Link></div></main>;
+}
+
+function AdminPage() {
+  const [password, setPassword] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  return unlocked ? <AdminDashboard password={password} /> : <AdminLogin password={password} setPassword={setPassword} onUnlock={() => { setAttempted(true); setUnlocked(Boolean(password.trim())); }} error={attempted && !password.trim()} />;
+}
+
+function Home() {
+  const [started, setStarted] = useState<Role | null>(null);
+  const [submitted, setSubmitted] = useState<ResponseInput | null>(null);
+  if (submitted) return <SuccessPage response={submitted} />;
+  if (started) return <Questionnaire initialRole={started} onComplete={(response) => setSubmitted(response)} onExit={() => setStarted(null)} />;
+  return <LandingPage onStart={(role) => setStarted(role)} />;
+}
+
+function Router() {
+  return <RoutedErrorBoundary><Switch><Route path="/" component={Home} /><Route path="/admin" component={AdminPage} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -47,16 +680,7 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
 }
 
 export default App;

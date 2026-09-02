@@ -55,7 +55,7 @@ export const CreateResponseBody = zod.object({
   "dealbreaker": zod.string().min(1),
   "dealbreakerOther": zod.string().nullish(),
   "intentLevel": zod.string().min(1),
-  "email": zod.email().nullable(),
+  "email": zod.string().nullable(),
   "phone": zod.string().nullable(),
   "prefersText": zod.boolean(),
   "utmSource": zod.string().nullish(),
@@ -65,7 +65,7 @@ export const CreateResponseBody = zod.object({
 })
 
 export const CreateResponseResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number(),
   "createdAt": zod.coerce.date()
 })
 
@@ -76,7 +76,7 @@ export const CreateResponseResponse = zod.object({
 export const CreateEventBody = zod.object({
   "eventName": zod.enum(['landing_viewed', 'driver_clicked', 'rider_clicked', 'step_reached', 'form_completed']),
   "role": zod.string().nullish(),
-  "step": zod.int().nullish()
+  "step": zod.number().nullish()
 })
 
 export const CreateEventResponse = zod.void()
@@ -90,52 +90,52 @@ export const GetAdminSummaryHeader = zod.object({
 })
 
 export const GetAdminSummaryResponse = zod.object({
-  "total": zod.int(),
-  "drivers": zod.int(),
-  "riders": zod.int(),
-  "interestedDrivers": zod.int(),
-  "interestedRiders": zod.int(),
+  "total": zod.number(),
+  "drivers": zod.number(),
+  "riders": zod.number(),
+  "interestedDrivers": zod.number(),
+  "interestedRiders": zod.number(),
   "driverCompensation": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "riderWillingness": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "weekdayActivity": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "arrivalDistribution": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "reliability": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "driverDealbreakers": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "riderDealbreakers": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "transportMethods": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "commuteDurations": zod.array(zod.object({
   "label": zod.string(),
-  "count": zod.int()
+  "count": zod.number()
 })),
   "potentialOverlap": zod.array(zod.object({
   "day": zod.string(),
   "time": zod.string(),
-  "drivers": zod.int(),
-  "riders": zod.int()
+  "drivers": zod.number(),
+  "riders": zod.number()
 }))
 })
 
@@ -182,7 +182,7 @@ export const GetAdminResponsesResponseItem = zod.object({
   "dealbreaker": zod.string().min(1),
   "dealbreakerOther": zod.string().nullish(),
   "intentLevel": zod.string().min(1),
-  "email": zod.email().nullable(),
+  "email": zod.string().nullable(),
   "phone": zod.string().nullable(),
   "prefersText": zod.boolean(),
   "utmSource": zod.string().nullish(),
@@ -190,7 +190,7 @@ export const GetAdminResponsesResponseItem = zod.object({
   "utmCampaign": zod.string().nullish(),
   "referrer": zod.string().nullish()
 }).and(zod.object({
-  "id": zod.int(),
+  "id": zod.number(),
   "createdAt": zod.coerce.date()
 }))
 export const GetAdminResponsesResponse = zod.array(GetAdminResponsesResponseItem)

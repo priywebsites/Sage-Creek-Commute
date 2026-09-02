@@ -1,6 +1,6 @@
-# [Project name]
+# Sage Creek Commute
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A mobile-first Sage Creek to U of M commute questionnaire with database-backed responses and a private validation dashboard.
 
 ## Run & Operate
 
@@ -10,6 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Required secret: `ADMIN_PASSWORD` — password for the private `/admin` results dashboard
 
 ## Stack
 
@@ -22,23 +23,31 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/sage-creek-commute` — public landing page, one-URL questionnaire, success state, and `/admin` dashboard
+- `artifacts/api-server/src/routes/commute.ts` — validated submissions, anonymous events, summaries, raw responses, and CSV export
+- `lib/db/src/schema/commute.ts` — response and event tables
+- `lib/api-spec/openapi.yaml` — source of truth for generated API hooks and server schemas
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Questionnaire responses store weekday schedules as JSONB on one response record so the submission remains atomic while the API stays simple.
+- Admin access is protected server-side with the `ADMIN_PASSWORD` secret; the browser never receives or stores response data before unlocking.
+- Time choices are generated in the UI at 30-minute intervals and checked again server-side before persistence.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Explains the Sage Creek ↔ U of M recurring-ride concept without claiming matches already exist.
+- Collects role, qualification, weekday schedule, flexibility, economics, objections, intent, and contact information.
+- Shows grouped schedule/economics/reliability signals, potential overlap buckets, searchable responses, and CSV export to the private admin.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep the experience consumer-facing rather than survey-like; avoid stock photography, fake numbers, fake testimonials, and customer-facing “pilot” language.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`.
+- Public submissions require both a five-day schedule payload and at least one contact method.
 
 ## Pointers
 
