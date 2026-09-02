@@ -354,12 +354,12 @@ function ScheduleEditor({ schedule, onChange }: { schedule: ResponseInput['sched
         return (
           <div className="schedule-row" key={key}>
             <div className="day-toggle"><button className={`switch ${current.active ? 'on' : ''}`} onClick={() => updateDay(key, { active: !current.active })} aria-label={`${current.active ? 'Remove' : 'Add'} ${label}`} data-testid={`button-toggle-${key}`} /><span>{label}</span></div>
-            <select value={current.arrival} disabled={!current.active} onChange={(event) => updateDay(key, { arrival: event.target.value })} aria-label={`${label} arrival`} data-testid={`select-arrival-${key}`}>
-               {arrivalTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}
+            {current.active ? <><select value={current.arrival} onChange={(event) => updateDay(key, { arrival: event.target.value })} aria-label={`${label} arrival`} data-testid={`select-arrival-${key}`}>
+              {arrivalTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}
             </select>
-            <select value={current.departure} disabled={!current.active} onChange={(event) => updateDay(key, { departure: event.target.value })} aria-label={`${label} departure`} data-testid={`select-departure-${key}`}>
-               {departureTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}
-            </select>
+            <select value={current.departure} onChange={(event) => updateDay(key, { departure: event.target.value })} aria-label={`${label} departure`} data-testid={`select-departure-${key}`}>
+              {departureTimeOptions.map((time) => <option value={time} key={time}>{time}</option>)}
+            </select></> : <div className="schedule-off">Not scheduled</div>}
           </div>
         );
       })}
@@ -467,10 +467,11 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   </QuestionFrame>;
 
   if (step === 3) return <QuestionFrame step={step} total={total} kicker="Flexibility" title="How flexible are you with your campus times?" subtitle="A little flexibility can make it much easier to find a practical overlap." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <p className="field-label">How flexible are you with when you arrive?</p>
     <div className="choice-grid">
       {['Need to be within about 10 minutes', '±15 minutes is fine', '±30 minutes is fine', 'I’m pretty flexible'].map((value) => <Choice key={value} label={value} selected={form.arrivalFlexibility === value} onClick={() => update({ arrivalFlexibility: value })} testId={`choice-arrival-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
-    <p className="field-label mt-6">How flexible are you with when you leave campus?</p>
+    <p className="field-label">How flexible are you with when you leave campus?</p>
     <div className="choice-grid">
       {['Need to be within about 10 minutes', '±15 minutes is fine', '±30 minutes is fine', 'I’m pretty flexible'].map((value) => <Choice key={value} label={value} selected={form.departureFlexibility === value} onClick={() => update({ departureFlexibility: value })} testId={`choice-departure-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
@@ -509,13 +510,13 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     </div>
   </QuestionFrame>;
 
-  if (step === 7 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="What feels fair" title="What’s the minimum you’d want per month to regularly take one nearby student on days you’re already driving?" subtitle="Choose the lowest amount that would make the coordination worth it. There is no recommended answer." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 7 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="Economics" title="What would make it worth it?" subtitle="What’s the minimum you’d want per month to regularly take one nearby student on days you’re already driving? Choose the lowest amount that would make the coordination worth it." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['$20–39', '$40–59', '$60–79', '$80–99', '$100–124', '$125+', 'I wouldn’t do it'].map((value) => <Choice key={value} label={value} selected={form.minimumMonthlyCompensation === value} onClick={() => update({ minimumMonthlyCompensation: value })} testId={`choice-compensation-${value.replace(/\W/g, '').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 7) return <QuestionFrame step={step} total={total} kicker="What feels worth paying" title="What’s the MOST you’d realistically pay per month?" subtitle="Assume you are usually matched with the same U of M student driver, your schedules fit, and you do not need to book individual rides every day." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 7) return <QuestionFrame step={step} total={total} kicker="Economics" title="What would feel worth paying?" subtitle="Assume your schedules fit and you usually ride with the same student driver." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['Under $40', '$40–59', '$60–79', '$80–99', '$100–124', '$125–149', '$150+', 'I wouldn’t pay'].map((value) => <Choice key={value} label={value} selected={form.maximumMonthlyWillingnessToPay === value} onClick={() => update({ maximumMonthlyWillingnessToPay: value })} testId={`choice-willingness-${value.replace(/\W/g, '').toLowerCase()}`} />)}
     </div>
@@ -528,13 +529,13 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     {form.dealbreaker === 'Other' && <div className="field"><label htmlFor="other-dealbreaker">Tell us a little more</label><input id="other-dealbreaker" value={form.dealbreakerOther ?? ''} onChange={(event) => update({ dealbreakerOther: event.target.value || null })} placeholder="Optional" data-testid="input-dealbreaker-other" /></div>}
   </QuestionFrame>;
 
-  if (step === 9) return <QuestionFrame step={step} total={total} kicker="Actual intent" title={form.role === 'driver' ? 'If we found a U of M student in Sage Creek whose location and schedule genuinely matched yours, would you try it for a month?' : 'If we found a Sage Creek driver whose schedule genuinely matched yours, would you try it for a month?'} subtitle="Choose the answer that feels most honest." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 9) return <QuestionFrame step={step} total={total} kicker="Actual intent" title="If we found a genuine schedule match, would you try this for a month?" subtitle="Choose the answer that feels most honest." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <Choice key={value} label={value} selected={form.intentLevel === value} onClick={() => update({ intentLevel: value })} testId={`choice-intent-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  return <QuestionFrame step={step} total={total} kicker={`You are ${roleLabel.toLowerCase()}`} title="Where should we send a note?" subtitle="We will only use this for Sage Creek Commute updates. No newsletter, no noise." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Send my answers" pending={createResponse.isPending}>
+  return <QuestionFrame step={step} total={total} kicker={roleLabel} title="Want us to reach out if your commute matches?" subtitle="Leave an email, phone number, or both." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Join the Sage Creek list" pending={createResponse.isPending}>
     <ContactFields form={form} update={update} />
     {createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}
   </QuestionFrame>;
@@ -565,7 +566,7 @@ function SuccessPage({ response }: { response: ResponseInput }) {
          </div>
          <p className="share-prompt">Know another U of M student in Sage Creek?</p>
         <div className="success-actions">
-          <button className="btn-primary" onClick={share} data-testid="button-share-commute">{copied ? 'Link copied' : 'Share with a Sage Creek friend'} {copied ? <Check size={16} /> : <Clipboard size={16} />}</button>
+           <button className="btn-primary" onClick={share} data-testid="button-share-commute">{copied ? 'Link copied' : 'Share with a Sage Creek commuter'} {copied ? <Check size={16} /> : <Clipboard size={16} />}</button>
           <Link href="/" className="btn-quiet" data-testid="link-success-home">Back to Sage Creek Commute</Link>
         </div>
       </main>

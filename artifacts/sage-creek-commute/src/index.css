@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -79,12 +78,12 @@
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  --background: 42 44% 96%;
-  --foreground: 220 30% 16%;
-  --border: 38 24% 84%;
-  --card: 42 50% 99%;
-  --card-foreground: 220 30% 16%;
-  --card-border: 38 24% 84%;
+  --background: 220 20% 98%;
+  --foreground: 220 18% 14%;
+  --border: 220 15% 88%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 18% 14%;
+  --card-border: 220 15% 88%;
   --sidebar: 220 32% 17%;
   --sidebar-foreground: 42 44% 96%;
   --sidebar-border: 220 25% 27%;
@@ -96,27 +95,27 @@
   --popover: 42 50% 99%;
   --popover-foreground: 220 30% 16%;
   --popover-border: 38 24% 84%;
-  --primary: 220 54% 29%;
-  --primary-foreground: 42 44% 96%;
-  --secondary: 38 30% 89%;
-  --secondary-foreground: 220 30% 16%;
-  --muted: 39 30% 91%;
-  --muted-foreground: 220 13% 44%;
-  --accent: 17 80% 63%;
-  --accent-foreground: 220 32% 17%;
+  --primary: 222 54% 36%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 18% 94%;
+  --secondary-foreground: 220 18% 14%;
+  --muted: 220 18% 94%;
+  --muted-foreground: 220 10% 43%;
+  --accent: 222 63% 52%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 4 69% 52%;
   --destructive-foreground: 0 0% 100%;
-  --input: 38 24% 80%;
-  --ring: 220 54% 29%;
-  --chart-1: 220 54% 29%;
-  --chart-2: 17 80% 63%;
+  --input: 220 15% 81%;
+  --ring: 222 63% 52%;
+  --chart-1: 222 54% 36%;
+  --chart-2: 222 63% 52%;
   --chart-3: 157 31% 44%;
   --chart-4: 41 76% 61%;
   --chart-5: 280 27% 54%;
-  --app-font-sans: 'DM Sans', sans-serif;
-  --app-font-serif: 'Instrument Serif', Georgia, serif;
-  --app-font-mono: 'Space Mono', monospace;
-  --radius: 1.1rem;
+  --app-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --app-font-serif: var(--app-font-sans);
+  --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --radius: .9rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0); /*replace with H S L */
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0); /*replace with H S L */
   --shadow-sm:
