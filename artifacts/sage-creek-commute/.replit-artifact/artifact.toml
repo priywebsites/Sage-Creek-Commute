@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Sage Creek Commute"
+description = "A mobile-first Sage Creek to U of M commute questionnaire that collects real driver and rider interest, schedules, contact details, and validation insights for a private results dashboard."
+version = "1.0.0"
+id = "artifacts/sage-creek-commute"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18737
+
+[services.development]
+run = "pnpm --filter @workspace/sage-creek-commute run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sage-creek-commute", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sage-creek-commute/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18737"
+BASE_PATH = "/"

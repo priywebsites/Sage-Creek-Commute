@@ -1,0 +1,675 @@
+Build a production-ready mobile-first landing page + multi-step commute questionnaire for a U of M student carpool concept focused ONLY on Sage Creek, Winnipeg.
+
+IMPORTANT:
+- Do not make this look like a school survey.
+- Do not use words like “pilot”, “MVP”, “research study”, “startup experiment”, etc. in customer-facing copy.
+- It should feel like a clean modern consumer mobility product for college students.
+- Do NOT use stock photography.
+- Keep the visual style very close to a polished modern startup: lots of whitespace, strong typography, rounded cards, subtle borders, restrained shadows, one tasteful accent color, excellent mobile UI.
+- The experience should be one URL with multiple questionnaire screens, not separate page reloads.
+- The entire site must work extremely well on iPhone/mobile first, but also look good on desktop.
+
+TECH:
+- Use React + TypeScript.
+- Use Tailwind CSS.
+- Use a simple backend/API.
+- Store final questionnaire responses in a database.
+- If Replit provides a native managed database/Postgres option, use it.
+- Do NOT rely only on browser localStorage for final submissions.
+- Validate all submitted data server-side.
+- Store timestamp, source/UTM params if present, user role, all answers, and contact info.
+- Build clean reusable components.
+- Do not overengineer.
+
+========================================
+1. LANDING PAGE
+========================================
+
+Top nav:
+Left:
+“Sage ↔ UofM”
+
+Right small pill:
+“Sage Creek · U of M students”
+
+Hero section:
+
+Small badge:
+“Built around your actual class schedule”
+
+Large headline:
+“Same neighbourhood.
+Same campus.
+Better commute.”
+
+Subheadline:
+“We’re seeing if U of M students in Sage Creek can be matched for recurring rides based on where they live and when they actually go to campus.”
+
+Primary buttons:
+🚗 “I drive to U of M”
+🎒 “I need rides”
+
+Small line underneath:
+“Takes about a minute · No commitment”
+
+On desktop, hero should have a polished visual card on the right showing:
+
+Sage Creek 🏘️  →  🚗  →  🎓 U of M
+
+Label:
+“How it could work”
+
+Title:
+“Your normal commute stays normal.”
+
+Then 3 simple steps:
+
+1. Add your weekly schedule
+“Monday can be 8:30. Tuesday can be 10:00. No problem.”
+
+2. We look for overlapping commutes
+“Nearby students, similar times, minimal extra driving.”
+
+3. If enough matches exist, we’ll reach out
+“You decide later if you actually want to try it.”
+
+Do NOT claim matches already exist.
+Do NOT show fake user counts.
+Do NOT show fake testimonials.
+
+========================================
+2. QUESTIONNAIRE EXPERIENCE
+========================================
+
+When user clicks Driver or Rider:
+smooth-scroll / transition into a multi-step onboarding flow.
+
+The UI should feel like onboarding, NOT Google Forms.
+
+Show:
+- role label at top
+- progress bar
+- “X of Y”
+- Back button
+- Continue button
+- one main decision/topic per screen
+
+Keep previous answers when pressing Back.
+
+The form should only submit to backend/database ONCE at the final step.
+
+Also track anonymous step progression/abandonment events if practical:
+- landing viewed
+- driver clicked
+- rider clicked
+- each step reached
+- form completed
+
+========================================
+STEP 1 — QUALIFY
+========================================
+
+Question:
+“Do you currently live in Sage Creek?”
+
+Options:
+Yes
+No
+
+If No:
+Do not continue through the normal form.
+
+Show:
+“This first version is focused on Sage Creek.”
+
+Then optionally let them leave an email/phone to hear about future neighbourhoods.
+
+Also ask:
+“Are you currently a U of M student?”
+
+Yes
+No
+
+If No:
+end the main flow politely.
+
+========================================
+STEP 2 — WEEKLY SCHEDULE
+========================================
+
+This is one of the most important screens and should look especially polished.
+
+Title:
+“When are you usually on campus?”
+
+Subtitle:
+“Your schedule can be completely different each day.”
+
+Show five separate weekday cards:
+
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+
+Each day has an ON/OFF toggle.
+
+When day is ON, show:
+
+“Want to arrive at U of M”
+[time selector]
+
+“Usually leave campus”
+[time selector]
+
+TIME OPTIONS:
+Use 30-minute intervals THROUGHOUT THE ENTIRE PRACTICAL DAY.
+
+For arrival:
+start around 6:00 AM and continue every 30 minutes through 10:00 PM.
+
+For leaving campus:
+same general range: 6:00 AM through 11:00 PM.
+
+Also include:
+“Varies”
+
+Do not stop arrival options at noon.
+
+Example:
+
+Monday
+ON
+
+Arrive:
+8:30 AM
+
+Leave:
+3:30 PM
+
+Tuesday
+ON
+
+Arrive:
+10:00 AM
+
+Leave:
+5:00 PM
+
+Wednesday
+OFF
+
+etc.
+
+========================================
+STEP 3 — FLEXIBILITY
+========================================
+
+Ask two questions on this screen:
+
+“How flexible are you with when you arrive?”
+
+Options:
+- Need to be within about 10 minutes
+- ±15 minutes is fine
+- ±30 minutes is fine
+- I’m pretty flexible
+
+Then:
+
+“How flexible are you with when you leave campus?”
+
+Same options.
+
+========================================
+STEP 4 — DIRECTION
+========================================
+
+Question:
+“Which rides would actually be useful to you?”
+
+Options:
+- To campus only
+- Home only
+- Both directions
+- Depends on the day
+
+========================================
+DRIVER STEP 5
+========================================
+
+Only for DRIVER.
+
+Question:
+“What’s the MOST extra time you’d tolerate picking someone up?”
+
+Options:
+- 0–2 minutes
+- 3–5 minutes
+- 6–10 minutes
+- 10+ minutes
+- I wouldn’t detour
+
+Then:
+
+“How many seats would you realistically offer?”
+
+Options:
+1
+2
+3+
+
+========================================
+RIDER STEP 5
+========================================
+
+Only for RIDER.
+
+Question:
+“How far would you be willing to walk to a convenient pickup spot?”
+
+Options:
+- Doorstep only
+- 2–3 minute walk
+- 5 minute walk
+- 10 minute walk
+
+Then:
+
+“How do you usually get to U of M right now?”
+
+Options:
+- Bus
+- Family or friend drives me
+- Uber / taxi
+- I drive myself
+- A mix of these
+
+Then:
+
+“How long does your current one-way commute usually take?”
+
+Options:
+- Under 20 minutes
+- 20–30 minutes
+- 30–45 minutes
+- 45–60 minutes
+- 60+ minutes
+
+========================================
+STEP 6 — SCHEDULE RELIABILITY
+========================================
+
+Both roles:
+
+Question:
+“How often do your campus plans change unexpectedly on the same day?”
+
+Options:
+- Almost never
+- Maybe once a month
+- A few times a month
+- About once a week
+- Multiple times a week
+
+This question matters for validation, so save it clearly in the database.
+
+========================================
+STEP 7 — ECONOMICS
+========================================
+
+DRIVER:
+
+Title:
+“What would make it worth it?”
+
+Question:
+“What’s the minimum you’d want per month to regularly take one nearby student on days you’re already driving?”
+
+Options:
+- $20–39
+- $40–59
+- $60–79
+- $80–99
+- $100–124
+- $125+
+- I wouldn’t do it
+
+Do NOT preselect or highlight a recommended answer.
+
+RIDER:
+
+Title:
+“What would feel worth paying?”
+
+Context:
+“Assume you’re usually matched with the same U of M student driver, your schedules fit, and you don’t need to book individual rides every day.”
+
+Question:
+“What’s the MOST you’d realistically pay per month?”
+
+Options:
+- Under $40
+- $40–59
+- $60–79
+- $80–99
+- $100–124
+- $125–149
+- $150+
+- I wouldn’t pay
+
+Do NOT anchor them to a specific planned price.
+
+========================================
+STEP 8 — BIGGEST DEALBREAKER
+========================================
+
+DRIVER:
+
+“What would be most likely to stop you from doing this?”
+
+Options:
+- Rider being late
+- Extra driving time
+- Having someone I don’t know in my car
+- Compensation being too low
+- My schedule changes too much
+- Insurance / liability concerns
+- Other
+
+If Other:
+show short text field.
+
+RIDER:
+
+“What would be most likely to stop you from using this?”
+
+Options:
+- Driver cancellations
+- Being late to class
+- Riding with someone I don’t know
+- Price
+- Pickup inconvenience
+- My schedule changes too much
+- Other
+
+If Other:
+show short text field.
+
+========================================
+STEP 9 — ACTUAL INTENT
+========================================
+
+Question:
+
+DRIVER:
+“If we found a U of M student in Sage Creek whose location and schedule genuinely matched yours, would you try it for a month?”
+
+RIDER:
+“If we found a Sage Creek driver whose schedule genuinely matched yours, would you try it for a month?”
+
+Options:
+- Definitely
+- Probably
+- Maybe
+- Probably not
+- No
+
+Do not manipulate the answer visually.
+All options should have equal visual weight.
+
+========================================
+STEP 10 — CONTACT
+========================================
+
+Title:
+“Want us to reach out if your commute matches?”
+
+Subtitle:
+“Leave an email, phone number, or both. We’ll only use it for this Sage Creek U of M project.”
+
+Fields:
+
+Email
+placeholder: you@email.com
+
+divider:
+“and / or”
+
+Phone number
+placeholder: 204-555-0123
+
+At least one must be provided to join the list.
+
+Optional checkbox:
+“I’d rather be contacted by text”
+
+Primary CTA:
+“Join the Sage Creek list”
+
+Privacy note:
+“We won’t sell your contact info or spam you.”
+
+========================================
+SUCCESS SCREEN
+========================================
+
+Show check icon.
+
+Headline:
+“You’re on the Sage Creek list.”
+
+Text:
+“We’re comparing real Sage Creek commute schedules to see where drivers and riders actually line up. If your commute has compatible matches, we’ll reach out.”
+
+Then:
+
+“Know another U of M student in Sage Creek?”
+
+Add:
+“Share with a Sage Creek commuter”
+
+Use Web Share API on supported devices.
+Fallback should allow copying the page URL.
+
+Also show a small summary of what the user entered:
+
+Example:
+
+Your commute
+Mon · 8:30 AM → 3:30 PM
+Tue · 10:00 AM → 5:00 PM
+Thu · 8:30 AM → 4:00 PM
+
+Do NOT expose other users.
+
+========================================
+DATABASE
+========================================
+
+Create a normalized but simple response schema.
+
+Each completed response should include at minimum:
+
+id
+created_at
+role: driver/rider
+lives_in_sage_creek
+is_uofm_student
+arrival_flexibility
+departure_flexibility
+ride_direction
+schedule_change_frequency
+
+DRIVER fields:
+max_detour
+seats
+minimum_monthly_compensation
+
+RIDER fields:
+max_pickup_walk
+current_transport_method
+current_commute_duration
+maximum_monthly_willingness_to_pay
+
+dealbreaker
+dealbreaker_other
+intent_level
+email
+phone
+prefers_text
+
+UTM/source info:
+utm_source
+utm_medium
+utm_campaign
+referrer if available
+
+Schedule should save PER DAY:
+monday_active
+monday_arrival
+monday_departure
+tuesday_active
+tuesday_arrival
+tuesday_departure
+etc.
+
+Or use a clean related schedule table if that architecture is cleaner.
+
+========================================
+ADMIN / RESULTS PAGE
+========================================
+
+Create a simple private admin results page.
+
+Path:
+/admin
+
+Protect it with a basic password/environment variable so normal visitors cannot access it.
+
+Show:
+
+TOTALS:
+- total completed responses
+- drivers
+- riders
+- definitely/probably interested drivers
+- definitely/probably interested riders
+
+ECONOMICS:
+- driver compensation distribution
+- rider willingness-to-pay distribution
+
+SCHEDULE:
+- number of active drivers/riders by weekday
+- arrival-time distribution
+- show 30-minute time buckets
+
+RELIABILITY:
+- schedule-change-frequency distribution
+
+OBJECTIONS:
+- driver dealbreakers
+- rider dealbreakers
+
+TRANSPORTATION:
+- rider current commute methods
+- rider current commute duration
+
+RAW RESPONSES:
+table with every response
+search/filter by:
+role
+weekday
+arrival time
+intent
+price bucket
+
+Add CSV export.
+
+Also create one useful section:
+
+“Potential overlap”
+
+For each weekday + 30-minute arrival bucket:
+show:
+- number of drivers
+- number of riders
+
+Example:
+Monday 8:30 AM
+7 drivers
+11 riders
+
+This does NOT need a sophisticated matching algorithm yet.
+It is just a validation dashboard.
+
+========================================
+DESIGN REQUIREMENTS
+========================================
+
+The visual style is extremely important.
+
+Use:
+- clean white/light background
+- dark high-contrast typography
+- one subtle modern accent color
+- rounded 12–24px corners
+- thin neutral borders
+- generous spacing
+- tasteful micro-interactions
+- smooth screen transitions
+- excellent tap targets
+- modern typography
+- minimal icons/emojis where useful
+
+Avoid:
+- giant gradients
+- neon colors
+- cheesy car stock images
+- generic startup illustrations
+- huge amounts of text
+- survey-looking layouts
+- fake reviews
+- fake numbers
+- excessive animations
+
+On mobile, each questionnaire screen should feel clean enough that one-handed use is easy.
+
+Make radio/select cards large and tappable.
+
+Schedule UI especially should feel polished.
+
+========================================
+FINAL QA
+========================================
+
+Before considering the build complete:
+
+1. Test complete driver flow.
+2. Test complete rider flow.
+3. Test Back navigation.
+4. Test different schedule times each weekday.
+5. Confirm arrival selector includes afternoon/evening times, not just morning.
+6. Confirm 30-minute increments.
+7. Test Sage Creek = No flow.
+8. Test U of M student = No flow.
+9. Test contact validation.
+10. Confirm final database submission works.
+11. Confirm admin dashboard reads real database data.
+12. Confirm CSV export works.
+13. Confirm responsive design at ~375px mobile width.
+14. Confirm no questionnaire answers disappear when going Back.
+15. Ensure no fake/sample submissions remain in production database.
+
+Do not simplify or remove questionnaire questions unless technically necessary.
+Do not add extra product features such as live maps, ride booking, payment processing, authentication, messaging, or matching yet.
+
+The goal of this website is ONLY:
+1. explain the concept,
+2. collect high-quality Sage Creek U of M commuter data,
+3. measure driver/rider interest,
+4. validate scheduling liquidity,
+5. validate rider willingness-to-pay versus driver compensation expectations,
+6. collect contact information for people we may contact later.

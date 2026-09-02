@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: responses
+    description: Public questionnaire submissions
+  - name: admin
+    description: Private validation dashboard
 paths:
   /healthz:
     get:
@@ -24,7 +28,120 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /responses:
+    post:
+      operationId: createResponse
+      tags: [responses]
+      summary: Save a completed commuter questionnaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResponseInput"
+      responses:
+        "201":
+          description: Saved response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseCreated"
+        "400":
+          description: Invalid questionnaire data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /events:
+    post:
+      operationId: createEvent
+      tags: [responses]
+      summary: Record an anonymous questionnaire event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "204":
+          description: Event recorded
+        "400":
+          description: Invalid event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Get grouped questionnaire results
+      parameters:
+        - $ref: "#/components/parameters/AdminPassword"
+      responses:
+        "200":
+          description: Results summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+        "401":
+          description: Invalid admin password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/responses:
+    get:
+      operationId: getAdminResponses
+      tags: [admin]
+      summary: List submitted questionnaire responses
+      parameters:
+        - $ref: "#/components/parameters/AdminPassword"
+      responses:
+        "200":
+          description: Raw responses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminResponse"
+        "401":
+          description: Invalid admin password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/export.csv:
+    get:
+      operationId: exportAdminResponses
+      tags: [admin]
+      summary: Download questionnaire responses as CSV
+      parameters:
+        - $ref: "#/components/parameters/AdminPassword"
+      responses:
+        "200":
+          description: CSV export
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          description: Invalid admin password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
+  parameters:
+    AdminPassword:
+      name: X-Admin-Password
+      in: header
+      required: true
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +150,228 @@ components:
           type: string
       required:
         - status
+    ScheduleDayInput:
+      type: object
+      required: [day, active, arrival, departure]
+      properties:
+        day:
+          type: string
+          enum: [monday, tuesday, wednesday, thursday, friday]
+        active:
+          type: boolean
+        arrival:
+          type: string
+          minLength: 1
+        departure:
+          type: string
+          minLength: 1
+    ResponseInput:
+      type: object
+      required:
+        - role
+        - livesInSageCreek
+        - isUofMStudent
+        - schedule
+        - arrivalFlexibility
+        - departureFlexibility
+        - rideDirection
+        - scheduleChangeFrequency
+        - dealbreaker
+        - intentLevel
+        - email
+        - phone
+        - prefersText
+      properties:
+        role:
+          type: string
+          enum: [driver, rider]
+        livesInSageCreek:
+          type: boolean
+        isUofMStudent:
+          type: boolean
+        schedule:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ScheduleDayInput"
+        arrivalFlexibility:
+          type: string
+          minLength: 1
+        departureFlexibility:
+          type: string
+          minLength: 1
+        rideDirection:
+          type: string
+          minLength: 1
+        maxDetour:
+          type: ["string", "null"]
+        seats:
+          type: ["string", "null"]
+        maxPickupWalk:
+          type: ["string", "null"]
+        currentTransportMethod:
+          type: ["string", "null"]
+        currentCommuteDuration:
+          type: ["string", "null"]
+        minimumMonthlyCompensation:
+          type: ["string", "null"]
+        maximumMonthlyWillingnessToPay:
+          type: ["string", "null"]
+        scheduleChangeFrequency:
+          type: string
+          minLength: 1
+        dealbreaker:
+          type: string
+          minLength: 1
+        dealbreakerOther:
+          type: ["string", "null"]
+        intentLevel:
+          type: string
+          minLength: 1
+        email:
+          type: ["string", "null"]
+          format: email
+        phone:
+          type: ["string", "null"]
+        prefersText:
+          type: boolean
+        utmSource:
+          type: ["string", "null"]
+        utmMedium:
+          type: ["string", "null"]
+        utmCampaign:
+          type: ["string", "null"]
+        referrer:
+          type: ["string", "null"]
+    ResponseCreated:
+      type: object
+      required: [id, createdAt]
+      properties:
+        id:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    EventInput:
+      type: object
+      required: [eventName]
+      properties:
+        eventName:
+          type: string
+          enum:
+            - landing_viewed
+            - driver_clicked
+            - rider_clicked
+            - step_reached
+            - form_completed
+        role:
+          type: ["string", "null"]
+        step:
+          type: ["integer", "null"]
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    AdminResponse:
+      allOf:
+        - $ref: "#/components/schemas/ResponseInput"
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id:
+              type: integer
+            createdAt:
+              type: string
+              format: date-time
+    DistributionItem:
+      type: object
+      required: [label, count]
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+    ScheduleBucket:
+      type: object
+      required: [day, time, drivers, riders]
+      properties:
+        day:
+          type: string
+        time:
+          type: string
+        drivers:
+          type: integer
+        riders:
+          type: integer
+    AdminSummary:
+      type: object
+      required:
+        - total
+        - drivers
+        - riders
+        - interestedDrivers
+        - interestedRiders
+        - driverCompensation
+        - riderWillingness
+        - weekdayActivity
+        - arrivalDistribution
+        - reliability
+        - driverDealbreakers
+        - riderDealbreakers
+        - transportMethods
+        - commuteDurations
+        - potentialOverlap
+      properties:
+        total:
+          type: integer
+        drivers:
+          type: integer
+        riders:
+          type: integer
+        interestedDrivers:
+          type: integer
+        interestedRiders:
+          type: integer
+        driverCompensation:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        riderWillingness:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        weekdayActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        arrivalDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        reliability:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        driverDealbreakers:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        riderDealbreakers:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        transportMethods:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        commuteDurations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DistributionItem"
+        potentialOverlap:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleBucket"
 
