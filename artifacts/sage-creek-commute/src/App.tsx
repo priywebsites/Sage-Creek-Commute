@@ -5,10 +5,10 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  ChevronRight,
   Clipboard,
   Download,
   ExternalLink,
+  GraduationCap,
   KeyRound,
   LockKeyhole,
   Mail,
@@ -18,7 +18,6 @@ import {
   Phone,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react';
 import {
@@ -115,8 +114,8 @@ function trackEvent(
 function Brand({ light = false }: { light?: boolean }) {
   return (
     <span className={`brand-mark ${light ? 'brand-light' : ''}`}>
-      <span className="brand-dot" />
-      <span>Sage Creek <i>Commute</i></span>
+      <span className="brand-dot" aria-hidden="true" />
+      <span>Sage <b>↔</b> UofM</span>
     </span>
   );
 }
@@ -131,10 +130,10 @@ function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
         </Link>
         <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
           <a href="#how-it-works" className="nav-link" data-testid="link-how-it-works">How it works</a>
-          <a href="#why-now" className="nav-link" data-testid="link-why-now">Why this</a>
+          <span className="nav-context">Sage Creek · U of M students</span>
           <Link href="/admin" className="nav-link" data-testid="link-admin">Admin</Link>
-           <button onClick={() => onStart('rider')} className="btn-primary compact" data-testid="button-header-start">
-            Take the 3-minute check <ArrowRight size={15} />
+          <button onClick={() => onStart('rider')} className="btn-primary compact" data-testid="button-header-start">
+             Check your commute <ArrowRight size={15} />
           </button>
         </nav>
         <button
@@ -149,9 +148,9 @@ function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
       {menuOpen && (
         <div className="mobile-menu md:hidden">
           <a href="#how-it-works" onClick={() => setMenuOpen(false)} data-testid="link-mobile-how">How it works</a>
-          <a href="#why-now" onClick={() => setMenuOpen(false)} data-testid="link-mobile-why">Why this</a>
+          <span className="mobile-menu-context">Sage Creek · U of M students</span>
           <Link href="/admin" data-testid="link-mobile-admin">Admin</Link>
-           <button onClick={() => { setMenuOpen(false); onStart('rider'); }} data-testid="button-mobile-start">Take the check <ArrowRight size={15} /></button>
+          <button onClick={() => { setMenuOpen(false); onStart('rider'); }} data-testid="button-mobile-start">Check your commute <ArrowRight size={15} /></button>
         </div>
       )}
     </header>
@@ -160,19 +159,23 @@ function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
 
 function RouteIllustration() {
   return (
-    <div className="route-card fade-up delay-2" aria-label="Illustration of the commute from Sage Creek to the University of Manitoba">
-      <div className="route-grid" />
-      <div className="route-line" />
-      <span className="map-label home">SAGE CREEK</span>
-      <span className="map-label uni">U OF M</span>
-      <div className="route-pin pin-one"><MapPin size={17} /></div>
-      <div className="route-pin pin-two"><Navigation size={17} /></div>
-      <div className="route-card-content">
-        <div>
-          <span className="eyebrow route-eyebrow">One local route</span>
-          <p>Make the trip to campus easier to plan, together.</p>
-        </div>
-        <div className="route-chip"><ArrowRight size={22} /></div>
+    <div className="route-card fade-up delay-2" aria-label="How Sage Creek Commute works">
+      <div className="route-card-top">
+        <span className="card-label">How it works</span>
+        <span className="card-route">Sage Creek <span>↔</span> U of M</span>
+      </div>
+      <div className="route-map" aria-hidden="true">
+        <div className="route-grid" />
+        <div className="route-line" />
+        <span className="map-label home">SAGE CREEK</span>
+        <span className="map-label uni">U OF M</span>
+        <div className="route-pin pin-one"><MapPin size={17} /></div>
+        <div className="route-pin pin-two"><Navigation size={17} /></div>
+      </div>
+      <div className="route-card-steps">
+        <div><span>1</span><p>Add your weekly schedule</p></div>
+        <div><span>2</span><p>We look for overlapping commutes</p></div>
+        <div><span>3</span><p>If enough matches exist, we’ll reach out</p></div>
       </div>
     </div>
   );
@@ -209,44 +212,32 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
         </div>
       </section>
 
-      <div className="container-wide">
-        <div className="stat-strip">
-          <div className="stat-cell"><div className="stat-num">01 / 03</div><div className="stat-label">Tell us how your week moves</div></div>
-          <div className="stat-cell"><div className="stat-num">LOCAL</div><div className="stat-label">Built around Sage Creek to U of M</div></div>
-           <div className="stat-cell"><div className="stat-num">PRIVATE</div><div className="stat-label">Your details stay with this project</div></div>
-        </div>
-      </div>
-
       <section id="how-it-works" className="section-pad">
-        <div className="container-wide feature-layout">
-          <div>
-            <div className="eyebrow">How it works</div>
-            <h2 className="display-lg mt-5">Less guessing.<br /><em>More arriving.</em></h2>
+        <div className="container-wide">
+          <div className="section-intro">
+            <div className="eyebrow">Why this could work</div>
+            <h2 className="display-lg mt-4">Built around the<br />way you actually commute.</h2>
           </div>
           <div className="feature-list">
-            <Feature number="01" title="Map your real week" body="A short, one-question-at-a-time check-in. Tell us when you actually head out, not when your timetable says you should." />
-             <Feature number="02" title="See the useful overlap" body="We look for practical windows where a driver and rider could share a route — without promising a match that does not exist yet." />
-             <Feature number="03" title="Make the details work" body="Your answers set the details: pickup walk, flexibility, cost, and the small things that make a commute work." />
+            <Feature number="01" title="Same neighbourhood" body="Nearby students already heading to campus." />
+            <Feature number="02" title="Real schedules" body="Different times on different days are built in." />
+            <Feature number="03" title="Better fit" body="We’re checking where the commute actually lines up." />
           </div>
         </div>
       </section>
 
-      <section id="why-now" className="why-section">
-        <div className="container-wide why-grid">
-          <div className="why-stamp"><Sparkles size={19} /><span>Made for the<br /><strong>in-between</strong> moments</span></div>
-          <div>
-            <div className="eyebrow">The point</div>
-            <h2 className="display-lg mt-5">Campus is not<br />the hard part.</h2>
-             <p className="body-copy">It is the 7:42 departure. The long walk in January. The bus that turns one connection into three. Sage Creek Commute is a small, local way to make those details easier to solve.</p>
-             <button onClick={() => onStart('rider')} className="text-link" data-testid="button-why-start">Start with your week <ChevronRight size={16} /></button>
-          </div>
+      <section className="privacy-section">
+        <div className="container-wide privacy-row">
+          <div><ShieldCheck size={18} /><span>Sage Creek only</span></div>
+          <div><GraduationCap size={18} /><span>U of M students only</span></div>
+          <div><LockKeyhole size={18} /><span>Your info stays private to this project</span></div>
         </div>
       </section>
 
       <footer className="site-footer">
         <div className="container-wide footer-row">
           <Brand />
-          <span>For Sage Creek students, by a local team.</span>
+           <span>For Sage Creek students, by a local team.</span>
           <Link href="/admin" className="footer-admin" data-testid="link-footer-admin">Private admin <ExternalLink size={13} /></Link>
         </div>
       </footer>

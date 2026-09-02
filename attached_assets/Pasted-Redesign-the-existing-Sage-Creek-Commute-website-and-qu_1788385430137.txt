@@ -1,0 +1,659 @@
+Redesign the existing Sage Creek Commute website and questionnaire.
+
+IMPORTANT:
+The current version is too editorial/luxury/over-designed.
+It does NOT match the intended vibe.
+
+We are changing the design direction.
+
+==================================================
+NEW DESIGN DIRECTION
+==================================================
+
+I want the product to feel:
+
+- simple
+- modern
+- calm
+- premium but understated
+- student-friendly
+- product-focused
+- mobile-first
+- very clean
+
+Think:
+- classic Apple-style product simplicity
+- clean onboarding UX
+- restrained, neutral, minimal interface
+- large whitespace
+- clear hierarchy
+- beautiful typography without being flashy
+- elegant but not artsy
+- modern app/product landing page, not a fashion/editorial site
+
+DO NOT copy Apple directly.
+But DO follow the same principles:
+- minimal
+- disciplined
+- high readability
+- clean layout
+- subtle confidence
+- no visual clutter
+
+==================================================
+WHAT TO REMOVE / CHANGE FROM CURRENT VERSION
+==================================================
+
+The current version has several wrong-direction choices. Fix them:
+
+1. Remove the “luxury magazine / editorial” feel.
+2. Remove overly dramatic serif-heavy layouts.
+3. Remove giant artsy sections that feel like branding fluff.
+4. Remove fancy conceptual copy that sounds vague.
+5. Remove dark blue oversized statement blocks if they feel too brand-heavy.
+6. Remove excessive visual complexity and decorative layouts.
+7. Remove “concept website” energy.
+8. Make it feel more like a real product people would actually use.
+
+The site should feel closer to:
+- a great onboarding flow
+- a clean startup landing page
+- a polished student mobility product
+
+==================================================
+TYPOGRAPHY
+==================================================
+
+Typography is extremely important.
+
+Use a clean sans-serif system for the primary UI.
+Prefer something like:
+- Inter
+- SF Pro style system font stack
+- or another clean neutral sans-serif
+
+For example:
+font-family:
+- ui-sans-serif
+- system-ui
+- -apple-system
+- BlinkMacSystemFont
+- "Inter"
+- "Segoe UI"
+- sans-serif
+
+DO NOT make serif fonts the main visual identity.
+If a serif is used at all, use it extremely sparingly or not at all.
+Default direction: mostly sans-serif.
+
+Headlines should be:
+- large
+- clean
+- strong
+- modern
+- not ornamental
+- not overly compressed
+- not overly decorative
+
+Body text should be:
+- very readable
+- neutral
+- clean
+- light enough to feel modern, dark enough to be legible
+
+==================================================
+COLOR / UI STYLE
+==================================================
+
+Keep the palette very restrained.
+
+Use:
+- warm white / off-white or very light neutral background
+- dark gray / near-black text
+- subtle gray borders
+- one restrained accent color
+
+Good accent options:
+- muted blue
+- soft navy
+- slate blue
+- or a clean subtle indigo
+
+Avoid:
+- loud orange
+- overly saturated colors
+- giant visual color blocks unless used very intentionally
+- too many colors
+
+Cards should be:
+- rounded
+- soft
+- lightly bordered
+- subtle shadow or no shadow
+- calm
+
+Buttons:
+- simple
+- rounded-pill or rounded-xl
+- clean solid primary button
+- understated secondary button
+
+Overall feel:
+- airy
+- polished
+- product UI
+- not “designed to impress Dribbble”
+
+==================================================
+CORE PRODUCT POSITIONING
+==================================================
+
+This is NOT a fake launch of a full app.
+This is a real landing page + commute intake flow.
+
+But customer-facing copy should NOT say:
+- pilot
+- MVP
+- research study
+- startup experiment
+
+It should feel like:
+“We’re building this around real local commutes.”
+
+Tone:
+- friendly
+- simple
+- confident
+- direct
+- not over-explained
+
+==================================================
+LANDING PAGE STRUCTURE
+==================================================
+
+Keep the landing page simple and disciplined.
+
+Top nav:
+Left:
+“Sage ↔ UofM”
+
+Right:
+small text or pill:
+“Sage Creek · U of M students”
+
+Hero layout:
+Two-column on desktop
+Single-column on mobile
+
+LEFT SIDE:
+Small eyebrow:
+“Built around your actual class schedule”
+
+Large headline:
+“Same neighbourhood.
+Same campus.
+Better commute.”
+
+Short subheadline:
+“We’re seeing if U of M students in Sage Creek can be matched for recurring rides based on where they live and when they actually go to campus.”
+
+Primary CTA buttons:
+- “I drive to U of M”
+- “I need rides”
+
+Small helper text under CTA:
+“Takes about a minute · No commitment”
+
+RIGHT SIDE:
+A simple clean visual card.
+Do NOT overdesign this.
+
+The right-side card should visually show:
+- Sage Creek
+- U of M
+- a simple path/route
+- maybe 2 or 3 minimal dots or icons
+- extremely clean and modern
+- not cartoonish
+- not overly illustrative
+
+Inside the card:
+small label:
+“How it works”
+
+3 simple steps:
+1. Add your weekly schedule
+2. We look for overlapping commutes
+3. If enough matches exist, we’ll reach out
+
+This should be a clean product card, not a flashy brand graphic.
+
+==================================================
+BELOW THE HERO
+==================================================
+
+Keep only 1–2 additional sections max.
+Do NOT make a giant long marketing site.
+
+Recommended sections:
+
+SECTION 1:
+A simple “Why this could work” section with 3 clean horizontal cards.
+
+Example card content:
+1. Same neighbourhood
+Nearby students already heading to campus.
+
+2. Real schedules
+Different times on different days are built in.
+
+3. Better fit
+We’re checking where the commute actually lines up.
+
+SECTION 2:
+A small reassurance / privacy section:
+- Sage Creek only
+- U of M students only
+- Your info stays private to this project
+
+That’s enough.
+Do NOT bloat the landing page.
+
+==================================================
+QUESTIONNAIRE UX
+==================================================
+
+This is the most important part.
+
+It should feel like a premium onboarding flow.
+
+NOT like:
+- a school survey
+- Google Forms
+- a boring long form
+
+It should feel like:
+- one thing at a time
+- large touch-friendly controls
+- calm layout
+- strong progress visibility
+- easy on mobile
+- fast and clean
+
+Use:
+- one screen/topic at a time
+- progress bar
+- step count
+- back button
+- continue button
+- large tappable answer cards
+- excellent spacing
+
+The questionnaire should appear as a clean centered content area.
+No weird oversized empty art direction.
+No dramatic visual tricks.
+
+Maximum width should stay comfortable and readable.
+
+==================================================
+QUESTIONNAIRE SCREENS
+==================================================
+
+Keep the same logic and data model from the current app/backend,
+but redesign the presentation.
+
+The flow should be:
+
+1. Lives in Sage Creek?
+2. Currently a U of M student?
+3. Weekly schedule
+4. Arrival flexibility + departure flexibility
+5. Ride direction
+6. Role-specific details
+7. Schedule reliability
+8. Economics
+9. Biggest dealbreaker
+10. Intent
+11. Contact
+12. Success screen
+
+==================================================
+WEEKLY SCHEDULE SCREEN
+==================================================
+
+This screen is very important.
+
+The current version is okay structurally but should be visually improved.
+
+I want a clean schedule UI with separate weekday rows/cards.
+
+For each weekday:
+- day label
+- on/off toggle
+- arrival selector
+- leave selector
+
+Use 30-minute intervals throughout the practical day.
+
+Arrival options:
+6:00 AM to 10:00 PM in 30-minute increments
+plus “Varies”
+
+Leave options:
+6:00 AM to 11:00 PM in 30-minute increments
+plus “Varies”
+
+Design this schedule UI to feel:
+- clean
+- obvious
+- polished
+- modern
+- easy to scan
+- mobile-friendly
+
+On mobile:
+stack nicely
+do not cram tiny controls
+
+If possible:
+use card rows with good spacing, not an ugly HTML table feel.
+
+Example structure per day:
+[Toggle] Monday
+Arrive at U of M [dropdown/select]
+Leave campus [dropdown/select]
+
+If off:
+collapse the time selectors.
+
+==================================================
+FLEXIBILITY SCREEN
+==================================================
+
+Do not make it look like a messy list.
+Use clean answer cards.
+
+Question 1:
+“How flexible are you with when you arrive?”
+
+Question 2:
+“How flexible are you with when you leave campus?”
+
+Options:
+- Need to be within about 10 minutes
+- ±15 minutes is fine
+- ±30 minutes is fine
+- I’m pretty flexible
+
+These can appear on one screen,
+but still clean and spaced well.
+
+==================================================
+RIDE DIRECTION SCREEN
+==================================================
+
+Question:
+“Which rides would actually be useful to you?”
+
+Options:
+- To campus only
+- Home only
+- Both directions
+- Depends on the day
+
+Large clean selection cards.
+
+==================================================
+ROLE-SPECIFIC SCREEN
+==================================================
+
+For DRIVER:
+- max detour
+- seats
+
+For RIDER:
+- pickup walk tolerance
+- current transportation
+- current commute duration
+
+Make these feel like clean onboarding questions.
+If two questions appear on one screen, layout them carefully and do not crowd them.
+
+==================================================
+ECONOMICS SCREEN
+==================================================
+
+This screen should feel important but calm.
+
+For DRIVER:
+Title:
+“What would make it worth it?”
+
+Question:
+“What’s the minimum you’d want per month to regularly take one nearby student on days you’re already driving?”
+
+For RIDER:
+Title:
+“What would feel worth paying?”
+
+Context:
+“Assume your schedules fit and you usually ride with the same student driver.”
+
+Question:
+“What’s the MOST you’d realistically pay per month?”
+
+Use clean selectable cards.
+No highlighted “recommended” answer.
+
+==================================================
+DEALBREAKER SCREEN
+==================================================
+
+Use clean single-choice answer cards.
+
+Driver options:
+- Rider being late
+- Extra driving time
+- Having someone I don’t know in my car
+- Compensation being too low
+- My schedule changes too much
+- Insurance / liability concerns
+- Other
+
+Rider options:
+- Driver cancellations
+- Being late to class
+- Riding with someone I don’t know
+- Price
+- Pickup inconvenience
+- My schedule changes too much
+- Other
+
+If “Other” is selected, reveal a clean text input.
+
+==================================================
+INTENT SCREEN
+==================================================
+
+Question:
+“If we found a genuine schedule match, would you try this for a month?”
+
+Options:
+- Definitely
+- Probably
+- Maybe
+- Probably not
+- No
+
+All options should look visually equal.
+
+==================================================
+CONTACT SCREEN
+==================================================
+
+This screen needs to look especially clean.
+
+Title:
+“Want us to reach out if your commute matches?”
+
+Subtitle:
+“Leave an email, phone number, or both.”
+
+Fields:
+- Email
+- Phone number
+
+Optional:
+- “I’d rather be contacted by text”
+
+At least one contact method required.
+
+Primary CTA:
+“Join the Sage Creek list”
+
+Small privacy note:
+“We won’t spam you or sell your information.”
+
+==================================================
+SUCCESS SCREEN
+==================================================
+
+Keep it simple.
+
+Show:
+- check icon
+- clear confirmation headline
+- short explanation
+- share action
+- summary of their commute
+
+Headline:
+“You’re on the Sage Creek list.”
+
+Text:
+“We’re comparing real Sage Creek commute schedules to see where drivers and riders actually line up. If your commute has compatible matches, we’ll reach out.”
+
+Then:
+“Know another U of M student in Sage Creek?”
+
+Button:
+“Share with a Sage Creek commuter”
+
+Also show a compact summary of what they entered.
+
+==================================================
+COPY CHANGES / TONE FIXES
+==================================================
+
+Update customer-facing copy to be simpler and cleaner.
+
+Avoid anything that sounds too “brand manifesto”.
+
+Good copy style:
+- short
+- useful
+- direct
+- student-friendly
+- easy to understand
+
+Examples of preferred copy tone:
+- “Check your commute”
+- “Tell us about your week”
+- “When are you usually on campus?”
+- “How flexible are your times?”
+- “What would make this worth it?”
+- “Want us to reach out if your commute matches?”
+
+Avoid abstract or overly poetic copy.
+
+==================================================
+ADMIN / BACKEND
+==================================================
+
+Keep the backend, API, validation, database schema, admin page, CSV export, and analytics logic.
+
+Do NOT remove:
+- response storage
+- admin authentication
+- admin dashboard
+- CSV export
+- step tracking if already implemented
+
+You may improve the admin UI slightly for cleanliness,
+but the main job is to redesign the public-facing experience.
+
+==================================================
+RESPONSIVE REQUIREMENTS
+==================================================
+
+Mobile is priority.
+
+At ~375px wide, this should feel excellent:
+- large tap targets
+- readable text
+- no crowded controls
+- no tiny table-like layouts
+- buttons easy to hit with one thumb
+
+Desktop should still feel polished, but mobile comes first.
+
+==================================================
+ANIMATION / INTERACTION
+==================================================
+
+Use subtle motion only.
+
+Allowed:
+- smooth transitions between steps
+- subtle hover states
+- soft focus states
+- small progress animations
+
+Avoid:
+- flashy animations
+- big parallax
+- dramatic movement
+- excessive motion
+
+==================================================
+VISUAL QUALITY BAR
+==================================================
+
+This must look like a polished product page and onboarding flow.
+
+It should feel closer to:
+- a clean Apple-like landing page
+- a premium startup onboarding flow
+- a polished modern SaaS/product UI
+
+It should NOT feel like:
+- a design portfolio
+- a fashion editorial
+- a concept site
+- a luxury brand page
+- a student assignment
+
+==================================================
+FINAL TASK
+==================================================
+
+Take the current working app and REFACTOR the front-end design so it matches this new direction.
+
+Keep the product logic and form logic.
+Completely improve the visual design and tone.
+
+Priority order:
+1. Fix public-facing UI/UX
+2. Keep all questionnaire logic working
+3. Preserve backend/database/admin functionality
+4. Improve mobile experience
+5. Make the design clean, simple, modern, and product-like
+
+Before finishing:
+- test full driver flow
+- test full rider flow
+- test mobile layout
+- test schedule UI
+- test back navigation
+- test final submission
+- confirm admin still works
