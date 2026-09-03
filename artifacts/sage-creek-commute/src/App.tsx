@@ -123,7 +123,7 @@ function Brand({ light = false }: { light?: boolean }) {
   );
 }
 
-function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
+function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="relative z-20 py-5">
@@ -135,9 +135,6 @@ function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
           <a href="#how-it-works" className="nav-link" data-testid="link-how-it-works">How it works</a>
           <span className="nav-context">Sage Creek · U of M students</span>
           <Link href="/admin" className="nav-link" data-testid="link-admin">Admin</Link>
-          <button onClick={() => onStart('rider')} className="btn-primary compact" data-testid="button-header-start">
-             Check your commute <ArrowRight size={15} />
-          </button>
         </nav>
         <button
           className="menu-button md:hidden"
@@ -153,7 +150,6 @@ function PublicHeader({ onStart }: { onStart: (role: Role) => void }) {
           <a href="#how-it-works" onClick={() => setMenuOpen(false)} data-testid="link-mobile-how">How it works</a>
           <span className="mobile-menu-context">Sage Creek · U of M students</span>
           <Link href="/admin" data-testid="link-mobile-admin">Admin</Link>
-          <button onClick={() => { setMenuOpen(false); onStart('rider'); }} data-testid="button-mobile-start">Check your commute <ArrowRight size={15} /></button>
         </div>
       )}
     </header>
@@ -189,10 +185,18 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
   useEffect(() => {
     trackEvent(createEvent.mutate, EventInputEventName.landing_viewed);
   }, []);
+  const selectRole = (role: Role) => {
+    trackEvent(
+      createEvent.mutate,
+      role === 'driver' ? EventInputEventName.driver_role_selected : EventInputEventName.rider_role_selected,
+      role,
+    );
+    onStart(role);
+  };
 
   return (
     <main className="site-shell">
-      <PublicHeader onStart={onStart} />
+      <PublicHeader />
       <section className="hero-section">
         <div className="container-wide hero-grid">
           <div className="hero-copy">
@@ -202,13 +206,10 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
                We’re seeing if U of M students in Sage Creek can be matched for recurring rides based on where they live and when they actually go to campus.
             </p>
             <div className="hero-actions fade-up delay-3">
-               <button onClick={() => onStart('driver')} className="btn-primary" data-testid="button-hero-driver">
-                 I drive to U of M <ArrowRight size={17} />
-               </button>
-               <button onClick={() => onStart('rider')} className="btn-quiet hero-secondary" data-testid="button-hero-rider">
-                 I need rides <ArrowRight size={17} />
-               </button>
-               <span className="quiet-note"><ShieldCheck size={15} /> Takes about a minute · no commitment</span>
+              <div className="role-choice-label">First, choose how you usually get to campus</div>
+              <RoleChoiceButtons onSelect={selectRole} testPrefix="hero" />
+              <span className="role-choice-helper">We’ll ask different questions based on your commute.</span>
+              <span className="quiet-note"><ShieldCheck size={15} /> Takes about a minute · no commitment</span>
             </div>
           </div>
           <RouteIllustration />
@@ -237,6 +238,17 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
         </div>
       </section>
 
+      <section className="role-cta-section">
+        <div className="container-wide role-cta-card">
+          <div>
+            <div className="eyebrow">Find your route</div>
+            <h2>Want to see if your commute could line up?</h2>
+            <p>Choose the option that describes you.</p>
+          </div>
+          <RoleChoiceButtons onSelect={selectRole} testPrefix="bottom" />
+        </div>
+      </section>
+
       <footer className="site-footer">
         <div className="container-wide footer-row">
           <Brand />
@@ -245,6 +257,19 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
         </div>
       </footer>
     </main>
+  );
+}
+
+function RoleChoiceButtons({ onSelect, testPrefix }: { onSelect: (role: Role) => void; testPrefix: string }) {
+  return (
+    <div className="role-choice-buttons">
+      <button onClick={() => onSelect('driver')} className="btn-primary role-choice-button" data-testid={`button-${testPrefix}-driver`}>
+        I drive to U of M <ArrowRight size={17} />
+      </button>
+      <button onClick={() => onSelect('rider')} className="btn-primary role-choice-button" data-testid={`button-${testPrefix}-rider`}>
+        I need rides <ArrowRight size={17} />
+      </button>
+    </div>
   );
 }
 

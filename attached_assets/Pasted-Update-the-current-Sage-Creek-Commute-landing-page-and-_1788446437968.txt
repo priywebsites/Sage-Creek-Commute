@@ -1,0 +1,178 @@
+Update the current Sage Creek Commute landing page and onboarding flow.
+
+Do NOT redesign the overall style. Keep the current clean minimal look.
+
+Main goal:
+Make it extremely obvious that users must choose ONE of these two paths before starting:
+
+- “I drive to U of M”
+- “I need rides”
+
+====================================
+1. REMOVE THE TOP “CHECK YOUR COMMUTE” BUTTON
+====================================
+
+Delete the current top navigation button:
+“Check your commute”
+
+Reason:
+It currently defaults into the driver flow, which can create inaccurate/fake driver responses.
+
+There should NEVER be a generic CTA that automatically assumes Driver or Rider.
+
+Any generic CTA must first ask the user to choose their role.
+
+====================================
+2. MAKE ROLE CHOICE MORE OBVIOUS IN HERO
+====================================
+
+Keep the hero buttons:
+
+“I drive to U of M”
+“I need rides”
+
+But make the section clearer.
+
+Add a short label directly above the buttons:
+
+“First, choose how you usually get to campus”
+
+Then show both buttons with equal visual importance.
+
+Do not make one look like the obvious default.
+
+Both should be similarly sized and equally prominent.
+
+Suggested structure:
+
+First, choose how you usually get to campus
+
+[ 🚗 I drive to U of M ]
+[ 🎒 I need rides ]
+
+Small helper text below:
+“We’ll ask different questions based on your commute.”
+
+====================================
+3. NO DEFAULT ROLE
+====================================
+
+Remove any code/state where Driver is automatically selected by default.
+
+Initial role state should be:
+null / unselected
+
+The questionnaire should NOT start until the user explicitly selects Driver or Rider.
+
+If someone somehow reaches the questionnaire route without selecting a role:
+show a clean role-selection screen first.
+
+Example:
+
+“How do you usually get to U of M?”
+
+[ I drive ]
+[ I need rides ]
+
+Do not assume Driver.
+
+====================================
+4. OTHER CTA BUTTONS
+====================================
+
+Audit every button/link on the public website.
+
+Any CTA such as:
+- Start
+- Check your commute
+- Get started
+- Continue
+- See if you match
+
+must NOT automatically enter the driver questionnaire.
+
+If the role is not selected yet:
+the CTA should scroll to or open the Driver/Rider choice.
+
+If the role is already selected:
+then it can continue into the correct questionnaire.
+
+====================================
+5. ADD ROLE CHOICE AGAIN LOWER ON PAGE
+====================================
+
+Near the bottom of the landing page, before the footer, add another simple CTA section:
+
+Title:
+“Want to see if your commute could line up?”
+
+Subtitle:
+“Choose the option that describes you.”
+
+Buttons:
+
+🚗 I drive to U of M
+🎒 I need rides
+
+Again, equal visual weight.
+
+This helps users who scroll past the hero.
+
+====================================
+6. ROLE INDICATOR DURING QUESTIONNAIRE
+====================================
+
+Once someone chooses a role, keep a small visible indicator near the top of the questionnaire.
+
+Examples:
+
+“Driver · Sage Creek → U of M”
+
+or
+
+“Rider · Sage Creek → U of M”
+
+Add a small:
+“Change”
+
+link/button beside it.
+
+If clicked:
+- return to role selection
+- warn/reset role-specific answers if necessary
+
+This prevents someone from accidentally completing the wrong form.
+
+====================================
+7. ANALYTICS
+====================================
+
+Track these separately:
+
+driver_role_selected
+rider_role_selected
+
+Do not count:
+- landing page view
+- generic CTA click
+
+as driver/rider interest.
+
+A person should only be classified as Driver or Rider after explicitly clicking one of the role options.
+
+====================================
+8. TEST
+====================================
+
+Before finishing:
+
+1. Open homepage fresh.
+2. Confirm NO role is selected.
+3. Confirm there is no generic button that defaults to Driver.
+4. Click “I drive to U of M” → Driver questionnaire opens.
+5. Refresh homepage.
+6. Click “I need rides” → Rider questionnaire opens.
+7. Test every other public CTA.
+8. Confirm every generic CTA forces role selection if role is still null.
+9. Confirm admin data only labels people Driver/Rider based on explicit role choice.
+10. Keep all existing responses/database data intact.
