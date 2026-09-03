@@ -115,7 +115,22 @@ function distributions(values: Array<string | null | undefined>) {
   return [...counts.entries()].map(([label, count]) => ({ label, count }));
 }
 
-function buildSummary(rows: ResponseData[]): AdminSummary {
+function uniqueResponses(rows: ResponseData[]): ResponseData[] {
+  return [...new Map(rows.map((row) => [row.id, row])).values()];
+}
+
+function uniqueScheduleEntries(row: ResponseData): ScheduleDay[] {
+  const seen = new Set<string>();
+  return row.schedule.filter((entry) => {
+    const key = `${entry.day}|${entry.arrival}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildSummary(inputRows: ResponseData[]): AdminSummary {
+  const rows = uniqueResponses(inputRows);
   const activeDays = weekdays.map((day) => ({
     label: day[0].toUpperCase() + day.slice(1),
     count: rows.reduce(
@@ -127,14 +142,14 @@ function buildSummary(rows: ResponseData[]): AdminSummary {
   }));
   const arrivalDistribution = distributions(
     rows.flatMap((row) =>
-      row.schedule
+      uniqueScheduleEntries(row)
         .filter((entry) => entry.active)
         .map((entry) => entry.arrival),
     ),
   );
   const overlap = new Map<string, { day: string; time: string; drivers: number; riders: number }>();
   rows.forEach((row) => {
-    row.schedule
+    uniqueScheduleEntries(row)
       .filter((entry) => entry.active && entry.arrival !== "Varies")
       .forEach((entry) => {
         const key = `${entry.day}|${entry.arrival}`;
@@ -200,6 +215,23 @@ function csvCell(value: unknown): string {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
+const scheduleCsvHeaders = weekdays.flatMap((day) => [
+  `${day}_active`,
+  `${day}_arrival`,
+  `${day}_leave`,
+]);
+
+function csvValue(row: ResponseData, header: string): unknown {
+  const scheduleDay = weekdays.find((day) => header.startsWith(`${day}_`));
+  if (scheduleDay) {
+    const entry = row.schedule.find((item) => item.day === scheduleDay);
+    if (header.endsWith("_active")) return entry?.active ?? false;
+    if (header.endsWith("_arrival")) return entry?.arrival ?? "";
+    return entry?.departure ?? "";
+  }
+  return row[header as keyof ResponseData];
+}
+
 router.post("/responses", async (req, res): Promise<void> => {
   const parsed = CreateResponseBody.safeParse(req.body);
   if (!parsed.success) {
@@ -262,21 +294,28 @@ router.get("/admin/summary", async (req, res): Promise<void> => {
 
 router.get("/admin/responses", async (req, res): Promise<void> => {
   if (!requireAdmin(req, res)) return;
-  const rows = (await db
-    .select()
-    .from(commuteResponsesTable)
-    .orderBy(desc(commuteResponsesTable.createdAt))).map(normalizeResponse);
+  const rows = uniqueResponses(
+    (await db
+      .select()
+      .from(commuteResponsesTable)
+      .orderBy(desc(commuteResponsesTable.createdAt)))
+      .map(normalizeResponse),
+  );
   res.json(GetAdminResponsesResponse.parse(rows));
 });
 
 router.get("/admin/export.csv", async (req, res): Promise<void> => {
   if (!requireAdmin(req, res)) return;
-  const rows = (await db
-    .select()
-    .from(commuteResponsesTable)
-    .orderBy(asc(commuteResponsesTable.createdAt))).map(normalizeResponse);
+  const rows = uniqueResponses(
+    (await db
+      .select()
+      .from(commuteResponsesTable)
+      .orderBy(asc(commuteResponsesTable.createdAt)))
+      .map(normalizeResponse),
+  );
   const headers = [
-    "id", "createdAt", "role", "livesInSageCreek", "isUofMStudent", "schedule",
+    "id", "createdAt", "role", "livesInSageCreek", "isUofMStudent",
+    ...scheduleCsvHeaders,
     "arrivalFlexibility", "departureFlexibility", "rideDirection", "maxDetour",
     "seats", "maxPickupWalk", "currentTransportMethod", "currentCommuteDuration",
     "minimumMonthlyCompensation", "maximumMonthlyWillingnessToPay",
@@ -285,7 +324,7 @@ router.get("/admin/export.csv", async (req, res): Promise<void> => {
   ];
   const csv = [
     headers.join(","),
-    ...rows.map((row) => headers.map((header) => csvCell(row[header as keyof typeof row])).join(",")),
+    ...rows.map((row) => headers.map((header) => csvCell(csvValue(row, header))).join(",")),
   ].join("\n");
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", 'attachment; filename="sage-creek-responses.csv"');

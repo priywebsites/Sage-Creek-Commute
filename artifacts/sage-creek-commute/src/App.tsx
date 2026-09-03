@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronRight,
   Clipboard,
   Download,
   ExternalLink,
@@ -379,7 +380,7 @@ function ContactFields({ form, update }: { form: ResponseInput; update: (patch: 
   const contactValid = Boolean(form.email || form.phone);
   return (
     <div className="contact-fields">
-      <div className="contact-note"><ShieldCheck size={16} /><span>Leave an email, phone number, or both. We’ll only use it for this Sage Creek U of M project.</span></div>
+      <div className="contact-note"><ShieldCheck size={16} /><span>We’ll only use this to contact you about Sage Creek Commute.</span></div>
       <div className="field"><label htmlFor="email"><Mail size={14} /> Email <span className="optional">or phone below</span></label><input id="email" type="email" value={form.email ?? ''} onChange={(event) => update({ email: event.target.value || null })} placeholder="you@example.com" data-testid="input-email" /></div>
       <div className="field"><label htmlFor="phone"><Phone size={14} /> Phone <span className="optional">or email above</span></label><input id="phone" type="tel" value={form.phone ?? ''} onChange={(event) => update({ phone: event.target.value || null })} placeholder="204 555 0142" data-testid="input-phone" /></div>
       <button className={`text-toggle ${form.prefersText ? 'selected' : ''}`} onClick={() => update({ prefersText: !form.prefersText })} data-testid="button-prefers-text" aria-pressed={form.prefersText}>
@@ -394,6 +395,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<ResponseInput>({ ...initialResponse, role: initialRole });
   const [exitKind, setExitKind] = useState<ExitKind>(null);
+  const submitGuard = useRef(false);
   const createResponse = useCreateResponse();
   const createEvent = useCreateEvent();
   const total = 11;
@@ -403,6 +405,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     setForm({ ...initialResponse, role: initialRole, schedule: blankSchedule.map((entry) => ({ ...entry })) });
     setStep(0);
     setExitKind(null);
+    submitGuard.current = false;
   };
 
   const goBack = () => {
@@ -428,6 +431,8 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     if (step === 0 && !form.livesInSageCreek) { setExitKind('location'); return; }
     if (step === 1 && !form.isUofMStudent) { setExitKind('student'); return; }
     if (step === 10) {
+      if (submitGuard.current || createResponse.isPending) return;
+      submitGuard.current = true;
       const search = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
       const payload: ResponseInput = {
         ...form,
@@ -438,6 +443,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
       };
       createResponse.mutate({ data: payload }, {
         onSuccess: () => onComplete(payload),
+        onError: () => { submitGuard.current = false; },
       });
       trackEvent(createEvent.mutate, EventInputEventName.form_completed, form.role, 11);
       return;
@@ -555,7 +561,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   </QuestionFrame>;
 }
 
-function SuccessPage({ response }: { response: ResponseInput }) {
+function SuccessPage({ response, onBackHome }: { response: ResponseInput; onBackHome: () => void }) {
   const [copied, setCopied] = useState(false);
   const share = async () => {
     const shareData = { title: 'Sage Creek Commute', text: 'A more practical way to get from Sage Creek to U of M.', url: window.location.href };
@@ -581,21 +587,72 @@ function SuccessPage({ response }: { response: ResponseInput }) {
          <p className="share-prompt">Know another U of M student in Sage Creek?</p>
         <div className="success-actions">
            <button className="btn-primary" onClick={share} data-testid="button-share-commute">{copied ? 'Link copied' : 'Share with a Sage Creek commuter'} {copied ? <Check size={16} /> : <Clipboard size={16} />}</button>
-          <Link href="/" className="btn-quiet" data-testid="link-success-home">Back to Sage Creek Commute</Link>
+           <Link href="/" onClick={onBackHome} className="btn-quiet" data-testid="link-success-home">Back to Sage Creek Commute</Link>
         </div>
       </main>
     </div>
   );
 }
 
-function Distribution({ title, items }: { title: string; items?: Array<{ label: string; count: number }> }) {
+function Distribution({ title, items, note }: { title: string; items?: Array<{ label: string; count: number }>; note?: string }) {
   const safeItems = items ?? [];
   const max = Math.max(...safeItems.map((item) => item.count), 1);
-  return <div className="admin-card"><h3>{title}</h3>{safeItems.length ? safeItems.map((item) => <div className="bar-row" key={item.label} data-testid={`distribution-${title.replace(/\W/g, '-').toLowerCase()}-${item.label.replace(/\W/g, '-').toLowerCase()}`}><span>{item.label}</span><div className="bar"><span style={{ width: `${(item.count / max) * 100}%` }} /></div><strong>{item.count}</strong></div>) : <p className="empty-admin">No responses yet.</p>}</div>;
+  return <div className="admin-card"><h3>{title}</h3>{note && <p className="distribution-note">{note}</p>}{safeItems.length ? safeItems.map((item) => <div className="bar-row" key={item.label} data-testid={`distribution-${title.replace(/\W/g, '-').toLowerCase()}-${item.label.replace(/\W/g, '-').toLowerCase()}`}><span>{item.label}</span><div className="bar"><span style={{ width: `${(item.count / max) * 100}%` }} /></div><strong>{item.count}</strong></div>) : <p className="empty-admin">No responses yet.</p>}</div>;
 }
 
 function AdminLogin({ password, setPassword, onUnlock, error }: { password: string; setPassword: (value: string) => void; onUnlock: () => void; error?: boolean }) {
-  return <main className="admin-login"><div className="admin-login-card"><div className="admin-lock"><LockKeyhole size={21} /></div><div className="eyebrow">Private workspace</div><h1 className="display-lg mt-4">Results, without<br /><em>the noise.</em></h1><p className="body-copy">Enter the admin password to view grouped validation signals and raw response data.</p><form onSubmit={(event) => { event.preventDefault(); onUnlock(); }} className="admin-login-form"><label htmlFor="admin-password">Admin password</label><div className="password-input"><KeyRound size={16} /><input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" autoComplete="current-password" data-testid="input-admin-password" /></div>{error && <p className="field-error">That password did not work. Try again.</p>}<button className="btn-primary w-full mt-4" type="submit" data-testid="button-admin-unlock">Unlock dashboard <ArrowRight size={16} /></button></form><Link href="/" className="admin-back-link" data-testid="link-admin-back"><ArrowLeft size={14} /> Back to public page</Link></div></main>;
+  return <main className="admin-login"><div className="admin-login-card"><div className="admin-lock"><LockKeyhole size={21} /></div><div className="eyebrow">Private workspace</div><h1 className="display-lg mt-4">Results, without<br /><em>the noise.</em></h1><p className="body-copy">Enter the admin password to view grouped validation signals and raw response data.</p><form onSubmit={(event) => { event.preventDefault(); onUnlock(); }} className="admin-login-form"><label htmlFor="admin-password">Admin password</label><input className="sr-only" type="text" name="username" autoComplete="username" tabIndex={-1} aria-hidden="true" /><div className="password-input"><KeyRound size={16} /><input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" autoComplete="current-password" data-testid="input-admin-password" /></div>{error && <p className="field-error">That password did not work. Try again.</p>}<button className="btn-primary w-full mt-4" type="submit" data-testid="button-admin-unlock">Unlock dashboard <ArrowRight size={16} /></button></form><Link href="/" className="admin-back-link" data-testid="link-admin-back"><ArrowLeft size={14} /> Back to public page</Link></div></main>;
+}
+
+function ResponseField({ label, value }: { label: string; value: string }) {
+  return <div className="response-field"><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function ResponseDetails({ response }: { response: AdminResponse }) {
+  const activeDays = response.schedule.filter((day) => day.active);
+  const utmValues = [response.utmSource, response.utmMedium, response.utmCampaign].filter(Boolean).join(' / ');
+  return (
+    <details className="response-detail" data-testid={`row-response-${response.id}`}>
+      <summary className="response-summary">
+        <div className="response-summary-main">
+          <span className={`role-pill ${response.role}`}>{response.role}</span>
+          <span>{new Date(response.createdAt).toLocaleDateString()}</span>
+        </div>
+        <div className="response-summary-contact">{response.email ?? response.phone ?? 'No contact'} </div>
+        <div className="response-summary-intent">{response.intentLevel}</div>
+        <span className="response-expand">View answers <ChevronRight size={16} /></span>
+      </summary>
+      <div className="response-detail-body">
+        <div className="response-detail-grid">
+          <ResponseField label="Lives in Sage Creek" value={response.livesInSageCreek ? 'Yes' : 'No'} />
+          <ResponseField label="U of M student" value={response.isUofMStudent ? 'Yes' : 'No'} />
+          <ResponseField label="Ride direction" value={response.rideDirection} />
+          <ResponseField label="Arrival flexibility" value={response.arrivalFlexibility} />
+          <ResponseField label="Leave flexibility" value={response.departureFlexibility} />
+          <ResponseField label="Schedule reliability" value={response.scheduleChangeFrequency} />
+          <ResponseField label="Dealbreaker" value={response.dealbreaker} />
+          {response.dealbreakerOther && <ResponseField label="Dealbreaker details" value={response.dealbreakerOther} />}
+          <ResponseField label="Intent" value={response.intentLevel} />
+          {response.email && <ResponseField label="Email" value={response.email} />}
+          {response.phone && <ResponseField label="Phone" value={response.phone} />}
+          <ResponseField label="Prefers text" value={response.prefersText ? 'Yes' : 'No'} />
+          {utmValues && <ResponseField label="Source / UTM" value={utmValues} />}
+          {response.referrer && <ResponseField label="Referrer" value={response.referrer} />}
+          {response.role === 'driver' && response.maxDetour && <ResponseField label="Maximum detour" value={response.maxDetour} />}
+          {response.role === 'driver' && response.seats && <ResponseField label="Students they would take" value={response.seats} />}
+          {response.role === 'driver' && response.minimumMonthlyCompensation && <ResponseField label="Minimum monthly compensation" value={response.minimumMonthlyCompensation} />}
+          {response.role === 'rider' && response.maxPickupWalk && <ResponseField label="Maximum pickup walk" value={response.maxPickupWalk} />}
+          {response.role === 'rider' && response.currentTransportMethod && <ResponseField label="Current transportation" value={response.currentTransportMethod} />}
+          {response.role === 'rider' && response.currentCommuteDuration && <ResponseField label="Usual commute duration" value={response.currentCommuteDuration} />}
+          {response.role === 'rider' && response.maximumMonthlyWillingnessToPay && <ResponseField label="Maximum monthly willingness to pay" value={response.maximumMonthlyWillingnessToPay} />}
+        </div>
+        <div className="response-schedule">
+          <div className="eyebrow">Active commute days</div>
+          {activeDays.length ? activeDays.map((day) => <div className="response-schedule-day" key={day.day}><strong>{day.day.slice(0, 3).toUpperCase()}</strong><span>{day.arrival} → {day.departure}</span></div>) : <p className="empty-admin">No active commute days.</p>}
+        </div>
+      </div>
+    </details>
+  );
 }
 
 function AdminDashboard({ password }: { password: string }) {
@@ -605,6 +662,8 @@ function AdminDashboard({ password }: { password: string }) {
   const [arrivalFilter, setArrivalFilter] = useState('all');
   const [intentFilter, setIntentFilter] = useState('all');
   const [priceFilter, setPriceFilter] = useState('all');
+  const [dealbreakerFilter, setDealbreakerFilter] = useState('all');
+  const [reliabilityFilter, setReliabilityFilter] = useState('all');
   const request = useMemo(() => ({ headers: { 'X-Admin-Password': password } }), [password]);
   const summaryQuery = useGetAdminSummary({ query: { enabled: Boolean(password), queryKey: getGetAdminSummaryQueryKey() }, request });
   const responsesQuery = useGetAdminResponses({ query: { enabled: Boolean(password), queryKey: getGetAdminResponsesQueryKey() }, request });
@@ -614,14 +673,16 @@ function AdminDashboard({ password }: { password: string }) {
   const responses = (responsesQuery.data ?? []) as AdminResponse[];
   const filtered = useMemo(() => responses.filter((response) => {
     const matchesRole = roleFilter === 'all' || response.role === roleFilter;
-    const haystack = `${response.email ?? ''} ${response.phone ?? ''} ${response.currentTransportMethod ?? ''} ${response.dealbreaker}`.toLowerCase();
+    const haystack = `${response.email ?? ''} ${response.phone ?? ''} ${response.currentTransportMethod ?? ''} ${response.dealbreaker} ${response.dealbreakerOther ?? ''}`.toLowerCase();
     const matchesWeekday = weekdayFilter === 'all' || response.schedule.some((day) => day.day === weekdayFilter && day.active);
     const matchesArrival = arrivalFilter === 'all' || response.schedule.some((day) => day.active && day.arrival === arrivalFilter);
     const price = response.role === 'driver' ? response.minimumMonthlyCompensation : response.maximumMonthlyWillingnessToPay;
     const matchesIntent = intentFilter === 'all' || response.intentLevel === intentFilter;
     const matchesPrice = priceFilter === 'all' || price === priceFilter;
-    return matchesRole && matchesWeekday && matchesArrival && matchesIntent && matchesPrice && haystack.includes(filter.toLowerCase());
-  }), [responses, filter, roleFilter, weekdayFilter, arrivalFilter, intentFilter, priceFilter]);
+    const matchesDealbreaker = dealbreakerFilter === 'all' || response.dealbreaker === dealbreakerFilter;
+    const matchesReliability = reliabilityFilter === 'all' || response.scheduleChangeFrequency === reliabilityFilter;
+    return matchesRole && matchesWeekday && matchesArrival && matchesIntent && matchesPrice && matchesDealbreaker && matchesReliability && haystack.includes(filter.toLowerCase());
+  }), [responses, filter, roleFilter, weekdayFilter, arrivalFilter, intentFilter, priceFilter, dealbreakerFilter, reliabilityFilter]);
 
   const download = async () => {
     const result = await exportQuery.refetch();
@@ -640,12 +701,12 @@ function AdminDashboard({ password }: { password: string }) {
   const total = summary?.total ?? responses.length;
   return <main className="admin-wrap"><div className="container-wide">
     <div className="admin-header"><div><Link href="/" className="question-brand" data-testid="link-admin-dashboard-brand"><Brand /></Link><div className="eyebrow mt-10">Private results dashboard</div><h1 className="display-lg mt-3">The shape of<br /><em>the commute.</em></h1></div><div className="admin-header-actions"><span className="health-pill"><span className={`health-dot ${healthQuery.data?.status === 'ok' ? 'live' : ''}`} /> API {healthQuery.data?.status ?? 'checking'}</span><button onClick={download} className="btn-quiet" disabled={exportQuery.isFetching} data-testid="button-export-csv"><Download size={16} /> {exportQuery.isFetching ? 'Preparing…' : 'Export CSV'}</button></div></div>
-    <div className="admin-stat-grid"><AdminStat value={total} label="total responses" /><AdminStat value={summary?.drivers ?? 0} label="drivers" accent /><AdminStat value={summary?.riders ?? 0} label="riders" /><AdminStat value={(summary?.interestedDrivers ?? 0) + (summary?.interestedRiders ?? 0)} label="definitely / probably" accent /></div>
-    <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Grouped signals</div><h2>What students are telling us</h2></div><span className="data-note">Updates on refresh</span></div></div>
-     <div className="admin-grid mt-5"><Distribution title="Compensation · drivers" items={summary?.driverCompensation} /><Distribution title="Willingness to pay · riders" items={summary?.riderWillingness} /><Distribution title="Active by weekday" items={summary?.weekdayActivity} /><Distribution title="Arrival times" items={summary?.arrivalDistribution} /><Distribution title="Current transport" items={summary?.transportMethods} /><Distribution title="Current commute duration" items={summary?.commuteDurations} /><Distribution title="Schedule reliability" items={summary?.reliability} /><Distribution title="Dealbreakers · all roles" items={[...(summary?.driverDealbreakers ?? []), ...(summary?.riderDealbreakers ?? [])]} /></div>
+     <div className="admin-stat-grid"><AdminStat value={total} label="total responses" /><AdminStat value={summary?.drivers ?? 0} label="drivers (unique)" accent /><AdminStat value={summary?.riders ?? 0} label="riders (unique)" /><AdminStat value={(summary?.interestedDrivers ?? 0) + (summary?.interestedRiders ?? 0)} label="definitely / probably (unique)" accent /></div>
+     <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Grouped signals</div><h2>What students are telling us</h2><p className="section-note">Person-level cards count unique completed response IDs. Schedule cards count commute days, not unique students.</p></div><span className="data-note">Updates on refresh</span></div></div>
+      <div className="admin-grid mt-5"><Distribution title="Compensation · drivers" items={summary?.driverCompensation} /><Distribution title="Willingness to pay · riders" items={summary?.riderWillingness} /><Distribution title="Active commute days by weekday" items={summary?.weekdayActivity} note="Counts commute days, not unique students." /><Distribution title="Scheduled arrivals" items={summary?.arrivalDistribution} note="Counts commute days, not unique students." /><Distribution title="Current transport" items={summary?.transportMethods} /><Distribution title="Current commute duration" items={summary?.commuteDurations} /><Distribution title="Schedule reliability" items={summary?.reliability} /><Distribution title="Dealbreakers · all roles" items={[...(summary?.driverDealbreakers ?? []), ...(summary?.riderDealbreakers ?? [])]} /></div>
     <div className="admin-card mt-5"><div className="section-heading"><div><div className="eyebrow">Potential overlap</div><h3 className="mt-2">Where driver and rider schedules may line up</h3></div><span className="data-note">day / arrival window</span></div><div className="overlap-grid mt-5">{(summary?.potentialOverlap ?? []).length ? summary?.potentialOverlap.map((bucket) => <div className="overlap-cell" key={`${bucket.day}-${bucket.time}`}><span>{bucket.day.slice(0, 3)}</span><strong>{bucket.time}</strong><small><b>{bucket.drivers}</b> drivers · <b>{bucket.riders}</b> riders</small></div>) : <p className="empty-admin">Overlap buckets will appear after the first responses.</p>}</div></div>
-     <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Raw responses</div><h2>Every answer, searchable</h2></div><span className="data-note">{filtered.length} shown</span></div><div className="response-filters mt-5"><input className="admin-input" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search contact, transport, objection…" data-testid="input-response-filter" /><select className="admin-input" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as 'all' | Role)} data-testid="select-response-role"><option value="all">All roles</option><option value="driver">Drivers</option><option value="rider">Riders</option></select><select className="admin-input" value={weekdayFilter} onChange={(event) => setWeekdayFilter(event.target.value)} data-testid="select-response-weekday"><option value="all">Any weekday</option>{days.map((day) => <option value={day.key} key={day.key}>{day.label}</option>)}</select><select className="admin-input" value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)} data-testid="select-response-arrival"><option value="all">Any arrival</option>{arrivalChoices.map((time) => <option value={time} key={time}>{time}</option>)}</select><select className="admin-input" value={intentFilter} onChange={(event) => setIntentFilter(event.target.value)} data-testid="select-response-intent"><option value="all">Any intent</option>{['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <option value={value} key={value}>{value}</option>)}</select><select className="admin-input" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)} data-testid="select-response-price"><option value="all">Any price bucket</option>{[...(summary?.driverCompensation ?? []), ...(summary?.riderWillingness ?? [])].map((item) => <option value={item.label} key={item.label}>{item.label}</option>)}</select></div></div>
-    <div className="response-table-wrap mt-5"><table className="response-table"><thead><tr><th>Date</th><th>Role</th><th>Route</th><th>Intent</th><th>Transport</th><th>Contact</th></tr></thead><tbody>{filtered.map((response) => <tr key={response.id} data-testid={`row-response-${response.id}`}><td>{new Date(response.createdAt).toLocaleDateString()}</td><td><span className={`role-pill ${response.role}`}>{response.role}</span></td><td>{response.rideDirection}</td><td>{response.intentLevel}</td><td>{response.currentTransportMethod ?? '—'}</td><td>{response.email ?? response.phone ?? '—'}</td></tr>)}{!filtered.length && <tr><td colSpan={6} className="empty-table">No responses match this filter.</td></tr>}</tbody></table></div>
+      <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Raw responses</div><h2>Every answer, searchable</h2></div><span className="data-note">{filtered.length} shown</span></div><div className="response-filters mt-5"><input className="admin-input" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search contact, transport, objection…" data-testid="input-response-filter" /><select className="admin-input" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as 'all' | Role)} data-testid="select-response-role"><option value="all">All roles</option><option value="driver">Drivers</option><option value="rider">Riders</option></select><select className="admin-input" value={weekdayFilter} onChange={(event) => setWeekdayFilter(event.target.value)} data-testid="select-response-weekday"><option value="all">Any weekday</option>{days.map((day) => <option value={day.key} key={day.key}>{day.label}</option>)}</select><select className="admin-input" value={arrivalFilter} onChange={(event) => setArrivalFilter(event.target.value)} data-testid="select-response-arrival"><option value="all">Any arrival</option>{arrivalChoices.map((time) => <option value={time} key={time}>{time}</option>)}</select><select className="admin-input" value={intentFilter} onChange={(event) => setIntentFilter(event.target.value)} data-testid="select-response-intent"><option value="all">Any intent</option>{['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <option value={value} key={value}>{value}</option>)}</select><select className="admin-input" value={priceFilter} onChange={(event) => setPriceFilter(event.target.value)} data-testid="select-response-price"><option value="all">Any price bucket</option>{[...(summary?.driverCompensation ?? []), ...(summary?.riderWillingness ?? [])].map((item, index) => <option value={item.label} key={`${item.label}-${index}`}>{item.label}</option>)}</select><select className="admin-input" value={dealbreakerFilter} onChange={(event) => setDealbreakerFilter(event.target.value)} data-testid="select-response-dealbreaker"><option value="all">Any dealbreaker</option>{[...(summary?.driverDealbreakers ?? []), ...(summary?.riderDealbreakers ?? [])].map((item, index) => <option value={item.label} key={`${item.label}-${index}`}>{item.label}</option>)}</select><select className="admin-input" value={reliabilityFilter} onChange={(event) => setReliabilityFilter(event.target.value)} data-testid="select-response-reliability"><option value="all">Any reliability</option>{['Almost never', 'Maybe once a month', 'A few times a month', 'About once a week', 'Multiple times a week'].map((value) => <option value={value} key={value}>{value}</option>)}</select></div></div>
+     <div className="response-list mt-5">{filtered.map((response) => <ResponseDetails key={response.id} response={response} />)}{!filtered.length && <div className="empty-table">No responses match this filter.</div>}</div>
   </div></main>;
 }
 
@@ -671,7 +732,12 @@ function AdminPage() {
 function Home() {
   const [started, setStarted] = useState<Role | null>(null);
   const [submitted, setSubmitted] = useState<ResponseInput | null>(null);
-  if (submitted) return <SuccessPage response={submitted} />;
+  const backHome = () => {
+    setSubmitted(null);
+    setStarted(null);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+  if (submitted) return <SuccessPage response={submitted} onBackHome={backHome} />;
   if (started) return <Questionnaire initialRole={started} onComplete={(response) => setSubmitted(response)} onExit={() => setStarted(null)} />;
   return <LandingPage onStart={(role) => setStarted(role)} />;
 }
