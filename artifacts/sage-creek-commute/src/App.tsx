@@ -258,7 +258,7 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
 function RoleChoiceButtons({ onSelect, testPrefix }: { onSelect: (role: Role) => void; testPrefix: string }) {
   return (
     <div className="role-choice-buttons">
-      <button onClick={() => onSelect('driver')} className="btn-primary role-choice-button" data-testid={`button-${testPrefix}-driver`}>
+      <button onClick={() => onSelect('driver')} className="btn-primary role-choice-button text-center text-[13px] justify-center items-center flex-row" data-testid={`button-${testPrefix}-driver`}>
         I drive to U of M <ArrowRight size={17} />
       </button>
       <button onClick={() => onSelect('rider')} className="btn-primary role-choice-button" data-testid={`button-${testPrefix}-rider`}>
@@ -579,9 +579,9 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     return (
       <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Economics" title="What would you pay each month?" subtitle={riderPriceSubtitle} canContinue={canContinue} onBack={goBack} onContinue={next}>
         <p className="field-label">What’s the most you’d realistically pay per month?</p>
-      <div className="choice-grid">
-        {['Under $40', '$40–59', '$60–79', '$80–99', '$100–124', '$125–149', '$150+', 'I wouldn’t pay'].map((value) => <Choice key={value} label={value} selected={form.maximumMonthlyWillingnessToPay === value} onClick={() => update({ maximumMonthlyWillingnessToPay: value })} testId={`choice-willingness-${value.replace(/\W/g, '').toLowerCase()}`} />)}
-      </div>
+        <div className="choice-grid">
+          {['Under $40', '$40–59', '$60–79', '$80–99', '$100–124', '$125–149', '$150+', 'I wouldn’t pay'].map((value) => <Choice key={value} label={value} selected={form.maximumMonthlyWillingnessToPay === value} onClick={() => update({ maximumMonthlyWillingnessToPay: value })} testId={`choice-willingness-${value.replace(/\W/g, '').toLowerCase()}`} />)}
+        </div>
       </QuestionFrame>
     );
   }
