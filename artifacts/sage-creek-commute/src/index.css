@@ -710,7 +710,8 @@ h1, h2, h3 { font-family: var(--app-font-sans); font-weight: 650; }
 .role-cta-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .9fr); align-items: center; gap: 48px; padding: 38px 42px; border: 1px solid hsl(var(--border)); border-radius: 22px; background: hsl(var(--card)); box-shadow: 0 16px 45px hsl(220 30% 20% / .05); }
 .role-cta-card h2 { max-width: 540px; margin-top: 12px; font-size: clamp(1.8rem, 4vw, 2.7rem); }
 .role-cta-card p { margin-top: 12px; color: hsl(var(--muted-foreground)); font-size: 15px; }
-.role-cta-card .role-choice-buttons { grid-column: auto; }
+.role-cta-card .role-choice-buttons { grid-column: auto; width: 100%; }
+.role-cta-card .role-choice-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 50px; padding-inline: 18px; white-space: nowrap; }
 .privacy-section { border-top: 1px solid hsl(var(--border)); border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
 .privacy-row { display: grid; grid-template-columns: repeat(3, 1fr); }
 .privacy-row > div { display: flex; align-items: center; gap: 10px; min-height: 76px; color: hsl(var(--muted-foreground)); font-size: 13px; }
@@ -779,7 +780,7 @@ h1, h2, h3 { font-family: var(--app-font-sans); font-weight: 650; }
   .quiet-note { grid-column: 1 / -1; }
   .role-cta-section { padding-bottom: 54px; }
   .role-cta-card { grid-template-columns: 1fr; gap: 26px; padding: 26px 20px; }
-  .role-cta-card .role-choice-buttons { grid-column: 1; }
+  .role-cta-card .role-choice-buttons { grid-column: 1; grid-template-columns: 1fr; gap: 11px; }
   .role-selection-main .role-choice-buttons { grid-template-columns: 1fr; }
   .route-card { padding: 18px; }
   .route-map { height: 170px; }

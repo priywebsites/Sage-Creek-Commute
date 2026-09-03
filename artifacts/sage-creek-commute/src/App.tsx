@@ -258,7 +258,7 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
 function RoleChoiceButtons({ onSelect, testPrefix }: { onSelect: (role: Role) => void; testPrefix: string }) {
   return (
     <div className="role-choice-buttons">
-      <button onClick={() => onSelect('driver')} className="btn-primary role-choice-button text-center text-[13px] justify-center items-center flex-row" data-testid={`button-${testPrefix}-driver`}>
+      <button onClick={() => onSelect('driver')} className="btn-primary role-choice-button" data-testid={`button-${testPrefix}-driver`}>
         I drive to U of M <ArrowRight size={17} />
       </button>
       <button onClick={() => onSelect('rider')} className="btn-primary role-choice-button" data-testid={`button-${testPrefix}-rider`}>
