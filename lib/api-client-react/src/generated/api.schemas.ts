@@ -96,8 +96,8 @@ export type EventInputEventName = typeof EventInputEventName[keyof typeof EventI
 
 export const EventInputEventName = {
   landing_viewed: 'landing_viewed',
-  driver_clicked: 'driver_clicked',
-  rider_clicked: 'rider_clicked',
+  driver_role_selected: 'driver_role_selected',
+  rider_role_selected: 'rider_role_selected',
   step_reached: 'step_reached',
   form_completed: 'form_completed',
 } as const;

@@ -74,7 +74,7 @@ export const CreateResponseResponse = zod.object({
  * @summary Record an anonymous questionnaire event
  */
 export const CreateEventBody = zod.object({
-  "eventName": zod.enum(['landing_viewed', 'driver_clicked', 'rider_clicked', 'step_reached', 'form_completed']),
+  "eventName": zod.enum(['landing_viewed', 'driver_role_selected', 'rider_role_selected', 'step_reached', 'form_completed']),
   "role": zod.string().nullish(),
   "step": zod.number().nullish()
 })

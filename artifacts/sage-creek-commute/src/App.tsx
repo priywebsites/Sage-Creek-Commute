@@ -77,8 +77,7 @@ const blankSchedule = days.map(({ key }) => ({
   departure: '4:30 PM',
 }));
 
-const initialResponse: ResponseInput = {
-  role: 'rider',
+const initialResponseFields: Omit<ResponseInput, 'role'> = {
   livesInSageCreek: true,
   isUofMStudent: true,
   schedule: blankSchedule,
@@ -313,6 +312,8 @@ function QuestionFrame({
   canContinue,
   onBack,
   onContinue,
+  role,
+  onChangeRole,
   continueLabel = 'Continue',
   pending = false,
 }: {
@@ -325,6 +326,8 @@ function QuestionFrame({
   canContinue: boolean;
   onBack: () => void;
   onContinue: () => void;
+  role?: Role;
+  onChangeRole?: () => void;
   continueLabel?: string;
   pending?: boolean;
 }) {
@@ -336,6 +339,7 @@ function QuestionFrame({
           <span className="step-count font-mono-custom">0{step + 1} <span>/ {String(total).padStart(2, '0')}</span></span>
         </div>
         <div className="progress-track" aria-label={`Step ${step + 1} of ${total}`}><div className="progress-fill" style={{ width: `${((step + 1) / total) * 100}%` }} /></div>
+        {role && onChangeRole && <div className="question-role-row"><span>{role === 'driver' ? 'Driver' : 'Rider'} · Sage Creek → U of M</span><button type="button" onClick={onChangeRole} data-testid="button-change-role">Change</button></div>}
       </div>
       <main className="question-main" key={`${step}-${title}`}>
         <div className="eyebrow">{kicker}</div>
@@ -418,7 +422,7 @@ function ContactFields({ form, update }: { form: ResponseInput; update: (patch: 
 
 function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role; onComplete: (response: ResponseInput) => void; onExit: () => void }) {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<ResponseInput>({ ...initialResponse, role: initialRole });
+  const [form, setForm] = useState<ResponseInput>({ ...initialResponseFields, role: initialRole });
   const [exitKind, setExitKind] = useState<ExitKind>(null);
   const submitGuard = useRef(false);
   const createResponse = useCreateResponse();
@@ -427,7 +431,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   const update = (patch: Partial<ResponseInput>) => setForm((previous) => ({ ...previous, ...patch }));
 
   const reset = () => {
-    setForm({ ...initialResponse, role: initialRole, schedule: blankSchedule.map((entry) => ({ ...entry })) });
+    setForm({ ...initialResponseFields, role: initialRole, schedule: blankSchedule.map((entry) => ({ ...entry })) });
     setStep(0);
     setExitKind(null);
     submitGuard.current = false;
@@ -480,26 +484,31 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   if (exitKind) return <QualificationExit kind={exitKind} onReset={reset} />;
 
   const roleLabel = form.role === 'driver' ? 'Driving to campus' : 'Looking for a ride';
-  if (step === 0) return <QuestionFrame step={step} total={total} kicker="First, your commute" title="Do you currently live in Sage Creek?" subtitle="This list is focused on the route between Sage Creek and the University of Manitoba." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  const changeRole = () => {
+    if (step > 0 && typeof window !== 'undefined' && !window.confirm('Changing your role will reset this questionnaire. Continue?')) return;
+    onExit();
+  };
+  const frameRoleProps = { role: form.role, onChangeRole: changeRole };
+  if (step === 0) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="First, your commute" title="Do you currently live in Sage Creek?" subtitle="This list is focused on the route between Sage Creek and the University of Manitoba." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       <Choice label="Yes, I do" selected={form.livesInSageCreek} onClick={() => update({ livesInSageCreek: true })} testId="choice-lives-yes" />
       <Choice label="No, not currently" selected={!form.livesInSageCreek} onClick={() => update({ livesInSageCreek: false })} testId="choice-lives-no" />
     </div>
   </QuestionFrame>;
 
-  if (step === 1) return <QuestionFrame step={step} total={total} kicker="One more check" title="Are you currently a U of M student?" subtitle="This list is for students making this commute to the Fort Garry campus." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 1) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="One more check" title="Are you currently a U of M student?" subtitle="This list is for students making this commute to the Fort Garry campus." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       <Choice label="Yes, I am" selected={form.isUofMStudent} onClick={() => update({ isUofMStudent: true })} testId="choice-student-yes" />
       <Choice label="No, not currently" selected={!form.isUofMStudent} onClick={() => update({ isUofMStudent: false })} testId="choice-student-no" />
     </div>
   </QuestionFrame>;
 
-  if (step === 2) return <QuestionFrame step={step} total={total} kicker="Your actual week" title="When are you usually on campus?" subtitle="Your schedule can be completely different each day. Choose your usual arrival and departure times." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 2) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Your actual week" title="When are you usually on campus?" subtitle="Your schedule can be completely different each day. Choose your usual arrival and departure times." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <ScheduleEditor schedule={form.schedule} onChange={(schedule) => update({ schedule })} />
     <p className="field-note mt-4">You can leave a day off if you are not usually on campus.</p>
   </QuestionFrame>;
 
-  if (step === 3) return <QuestionFrame step={step} total={total} kicker="Flexibility" title="How much can your commute times move?" subtitle="This helps us see how closely another student’s schedule needs to match yours." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 3) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Flexibility" title="How much can your commute times move?" subtitle="This helps us see how closely another student’s schedule needs to match yours." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <p className="field-label">How flexible are you with your arrival time?</p>
     <div className="choice-grid">
       {['Need to be within about 10 minutes', '±15 minutes is fine', '±30 minutes is fine', 'I’m pretty flexible'].map((value) => <Choice key={value} label={value} selected={form.arrivalFlexibility === value} onClick={() => update({ arrivalFlexibility: value })} testId={`choice-arrival-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
@@ -510,13 +519,13 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     </div>
   </QuestionFrame>;
 
-  if (step === 4) return <QuestionFrame step={step} total={total} kicker="Direction" title="Which part of your commute would you use this for?" subtitle="Choose what would actually be useful during a normal week." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 4) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Direction" title="Which part of your commute would you use this for?" subtitle="Choose what would actually be useful during a normal week." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['To campus only', 'Home only', 'Both directions', 'Depends on the day'].map((value) => <Choice key={value} label={value} selected={form.rideDirection === value} onClick={() => update({ rideDirection: value })} testId={`choice-direction-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 5 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="The driver side" title="How much extra driving is reasonable?" subtitle="Assume the student lives close to your normal route." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 5 && form.role === 'driver') return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="The driver side" title="How much extra driving is reasonable?" subtitle="Assume the student lives close to your normal route." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <p className="field-label">What’s the most extra time you’d tolerate for a pickup?</p>
     <div className="choice-grid">
       {['0–2 minutes', '3–5 minutes', '6–10 minutes', '10+ minutes', 'I wouldn’t detour'].map((value) => <Choice key={value} label={value} selected={form.maxDetour === value} onClick={() => update({ maxDetour: value })} testId={`choice-detour-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
@@ -527,7 +536,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     </div>
   </QuestionFrame>;
 
-  if (step === 5) return <QuestionFrame step={step} total={total} kicker="The rider side" title="How would pickup work for you?" subtitle="Think about the distance and habits that would actually work on a class day." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 5) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="The rider side" title="How would pickup work for you?" subtitle="Think about the distance and habits that would actually work on a class day." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <p className="field-label">How far would you be willing to walk to meet your driver?</p>
     <div className="choice-grid">
       {['Doorstep only', '2–3 minute walk', '5 minute walk', '10 minute walk'].map((value) => <Choice key={value} label={value} selected={form.maxPickupWalk === value} onClick={() => update({ maxPickupWalk: value })} testId={`choice-walk-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
@@ -539,13 +548,13 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     <div className="field"><label htmlFor="duration">How long does your usual one-way trip to campus take?</label><select id="duration" value={form.currentCommuteDuration ?? ''} onChange={(event) => update({ currentCommuteDuration: event.target.value })} data-testid="select-commute-duration"><option value="">Choose one</option><option>Under 20 minutes</option><option>20–30 minutes</option><option>30–45 minutes</option><option>45–60 minutes</option><option>60+ minutes</option></select></div>
   </QuestionFrame>;
 
-  if (step === 6) return <QuestionFrame step={step} total={total} kicker="Schedule reliability" title="How often does your schedule change last-minute?" subtitle="Think same-day changes to when you go to campus or when you leave." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 6) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Schedule reliability" title="How often does your schedule change last-minute?" subtitle="Think same-day changes to when you go to campus or when you leave." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['Almost never', 'Maybe once a month', 'A few times a month', 'About once a week', 'Multiple times a week'].map((value) => <Choice key={value} label={value} selected={form.scheduleChangeFrequency === value} onClick={() => update({ scheduleChangeFrequency: value })} testId={`choice-schedule-change-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 7 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="Economics" title="What would make it worth it?" subtitle="For regularly taking the same nearby U of M student on days you’re already driving." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 7 && form.role === 'driver') return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Economics" title="What would make it worth it?" subtitle="For regularly taking the same nearby U of M student on days you’re already driving." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <p className="field-label">What’s the minimum you’d want to receive per month?</p>
     <div className="choice-grid">
       {['$20–39', '$40–59', '$60–79', '$80–99', '$100–124', '$125+', 'I wouldn’t do it'].map((value) => <Choice key={value} label={value} selected={form.minimumMonthlyCompensation === value} onClick={() => update({ minimumMonthlyCompensation: value })} testId={`choice-compensation-${value.replace(/\W/g, '').toLowerCase()}`} />)}
@@ -559,7 +568,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
       'Both directions': 'For recurring rides to and from U of M on the days you selected, with a nearby student whose schedule fits yours.',
       'Depends on the day': 'For recurring rides on the parts of your week where your schedule matches another student.',
     }[form.rideDirection] ?? 'For recurring rides on the parts of your week where your schedule matches another student.';
-    return <QuestionFrame step={step} total={total} kicker="Economics" title="What would you pay each month?" subtitle={riderPriceSubtitle} canContinue={canContinue} onBack={goBack} onContinue={next}>
+    return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Economics" title="What would you pay each month?" subtitle={riderPriceSubtitle} canContinue={canContinue} onBack={goBack} onContinue={next}>
       <p className="field-label">What’s the most you’d realistically pay per month?</p>
     <div className="choice-grid">
       {['Under $40', '$40–59', '$60–79', '$80–99', '$100–124', '$125–149', '$150+', 'I wouldn’t pay'].map((value) => <Choice key={value} label={value} selected={form.maximumMonthlyWillingnessToPay === value} onClick={() => update({ maximumMonthlyWillingnessToPay: value })} testId={`choice-willingness-${value.replace(/\W/g, '').toLowerCase()}`} />)}
@@ -567,20 +576,20 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     </QuestionFrame>;
   }
 
-  if (step === 8) return <QuestionFrame step={step} total={total} kicker="The dealbreaker" title={form.role === 'driver' ? 'What would make you least likely to do this?' : 'What would make you least likely to use this?'} subtitle="Pick the biggest concern." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 8) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="The dealbreaker" title={form.role === 'driver' ? 'What would make you least likely to do this?' : 'What would make you least likely to use this?'} subtitle="Pick the biggest concern." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {(form.role === 'driver' ? ['Rider being late', 'Extra driving time', 'Having someone I don’t know in my car', 'Compensation being too low', 'My schedule changes too much', 'Insurance / liability concerns', 'Other'] : ['Driver cancellations', 'Being late to class', 'Riding with someone I don’t know', 'Price', 'Pickup inconvenience', 'My schedule changes too much', 'Other']).map((value) => <Choice key={value} label={value} selected={form.dealbreaker === value} onClick={() => update({ dealbreaker: value, dealbreakerOther: value === 'Other' ? form.dealbreakerOther : null })} testId={`choice-dealbreaker-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
     {form.dealbreaker === 'Other' && <div className="field"><label htmlFor="other-dealbreaker">Tell us a little more</label><input id="other-dealbreaker" value={form.dealbreakerOther ?? ''} onChange={(event) => update({ dealbreakerOther: event.target.value || null })} placeholder="Optional" data-testid="input-dealbreaker-other" /></div>}
   </QuestionFrame>;
 
-  if (step === 9) return <QuestionFrame step={step} total={total} kicker="Actual intent" title="Would you actually try it?" subtitle={form.role === 'driver' ? 'If we found a Sage Creek student whose route and schedule genuinely fit yours, would you try taking them for a month?' : 'If we found a Sage Creek student driver whose route and schedule genuinely fit yours, would you try riding with them for a month?'} canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 9) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="Actual intent" title="Would you actually try it?" subtitle={form.role === 'driver' ? 'If we found a Sage Creek student whose route and schedule genuinely fit yours, would you try taking them for a month?' : 'If we found a Sage Creek student driver whose route and schedule genuinely fit yours, would you try riding with them for a month?'} canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <Choice key={value} label={value} selected={form.intentLevel === value} onClick={() => update({ intentLevel: value })} testId={`choice-intent-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  return <QuestionFrame step={step} total={total} kicker={roleLabel} title="Want us to reach out if your commute matches?" subtitle="If we find compatible Sage Creek commuters around your schedule, we’ll let you know." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Join the Sage Creek list" pending={createResponse.isPending}>
+  return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker={roleLabel} title="Want us to reach out if your commute matches?" subtitle="If we find compatible Sage Creek commuters around your schedule, we’ll let you know." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Join the Sage Creek list" pending={createResponse.isPending}>
     <ContactFields form={form} update={update} />
     {createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}
   </QuestionFrame>;
@@ -617,6 +626,47 @@ function SuccessPage({ response, onBackHome }: { response: ResponseInput; onBack
       </main>
     </div>
   );
+}
+
+function RoleSelectionScreen({ onSelect }: { onSelect: (role: Role) => void }) {
+  return (
+    <div className="question-shell">
+      <div className="question-top">
+        <div className="question-nav-row">
+          <Link href="/" className="question-brand" data-testid="link-role-gate-brand"><Brand /></Link>
+          <span className="eyebrow">Start here</span>
+        </div>
+      </div>
+      <main className="question-main role-selection-main">
+        <div className="eyebrow">Your commute</div>
+        <h1 className="question-title mt-5">How do you usually get to U of M?</h1>
+        <p className="question-subtitle">Choose one option so we can ask the right questions for your commute.</p>
+        <RoleChoiceButtons onSelect={onSelect} testPrefix="role-gate" />
+      </main>
+    </div>
+  );
+}
+
+function QuestionnaireEntry() {
+  const [role, setRole] = useState<Role | null>(null);
+  const [submitted, setSubmitted] = useState<ResponseInput | null>(null);
+  const createEvent = useCreateEvent();
+  const selectRole = (nextRole: Role) => {
+    trackEvent(
+      createEvent.mutate,
+      nextRole === 'driver' ? EventInputEventName.driver_role_selected : EventInputEventName.rider_role_selected,
+      nextRole,
+    );
+    setRole(nextRole);
+  };
+  const backHome = () => {
+    setSubmitted(null);
+    setRole(null);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+  if (submitted) return <SuccessPage response={submitted} onBackHome={backHome} />;
+  if (!role) return <RoleSelectionScreen onSelect={selectRole} />;
+  return <Questionnaire initialRole={role} onComplete={setSubmitted} onExit={() => setRole(null)} />;
 }
 
 function Distribution({ title, items, note }: { title: string; items?: Array<{ label: string; count: number }>; note?: string }) {
@@ -768,7 +818,7 @@ function Home() {
 }
 
 function Router() {
-  return <RoutedErrorBoundary><Switch><Route path="/" component={Home} /><Route path="/admin" component={AdminPage} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>;
+  return <RoutedErrorBoundary><Switch><Route path="/" component={Home} /><Route path="/questionnaire" component={QuestionnaireEntry} /><Route path="/admin" component={AdminPage} /><Route component={NotFound} /></Switch></RoutedErrorBoundary>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
