@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -468,8 +468,8 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     <p className="field-note mt-4">You can leave a day off if you are not usually on campus.</p>
   </QuestionFrame>;
 
-  if (step === 3) return <QuestionFrame step={step} total={total} kicker="Flexibility" title="How flexible are you with your campus times?" subtitle="A little flexibility can make it much easier to find a practical overlap." canContinue={canContinue} onBack={goBack} onContinue={next}>
-    <p className="field-label">How flexible are you with when you arrive?</p>
+  if (step === 3) return <QuestionFrame step={step} total={total} kicker="Flexibility" title="How much can your commute times move?" subtitle="This helps us see how closely another student’s schedule needs to match yours." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <p className="field-label">How flexible are you with your arrival time?</p>
     <div className="choice-grid">
       {['Need to be within about 10 minutes', '±15 minutes is fine', '±30 minutes is fine', 'I’m pretty flexible'].map((value) => <Choice key={value} label={value} selected={form.arrivalFlexibility === value} onClick={() => update({ arrivalFlexibility: value })} testId={`choice-arrival-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
@@ -479,65 +479,77 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     </div>
   </QuestionFrame>;
 
-  if (step === 4) return <QuestionFrame step={step} total={total} kicker="Direction" title="Which rides would actually be useful to you?" subtitle="Choose the direction that would help most on your usual week." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 4) return <QuestionFrame step={step} total={total} kicker="Direction" title="Which part of your commute would you use this for?" subtitle="Choose what would actually be useful during a normal week." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['To campus only', 'Home only', 'Both directions', 'Depends on the day'].map((value) => <Choice key={value} label={value} selected={form.rideDirection === value} onClick={() => update({ rideDirection: value })} testId={`choice-direction-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 5 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="The driver side" title="What would you realistically offer?" subtitle="Keep your normal commute in mind — we are asking about the most you would be comfortable adding." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 5 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="The driver side" title="How much extra driving is reasonable?" subtitle="Assume the student lives close to your normal route." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <p className="field-label">What’s the most extra time you’d tolerate for a pickup?</p>
     <div className="choice-grid">
       {['0–2 minutes', '3–5 minutes', '6–10 minutes', '10+ minutes', 'I wouldn’t detour'].map((value) => <Choice key={value} label={value} selected={form.maxDetour === value} onClick={() => update({ maxDetour: value })} testId={`choice-detour-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
-    <p className="field-label mt-6">How many seats would you realistically offer?</p>
+    <p className="field-label">How many students would you realistically be willing to take?</p>
     <div className="choice-grid">
       {['1', '2', '3+'].map((value) => <Choice key={value} label={value} selected={form.seats === value} onClick={() => update({ seats: value })} testId={`choice-seats-${value}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 5) return <QuestionFrame step={step} total={total} kicker="The rider side" title="What would make a pickup convenient?" subtitle="Think about the distance and habits that would actually work on a class day." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 5) return <QuestionFrame step={step} total={total} kicker="The rider side" title="How would pickup work for you?" subtitle="Think about the distance and habits that would actually work on a class day." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <p className="field-label">How far would you be willing to walk to meet your driver?</p>
     <div className="choice-grid">
       {['Doorstep only', '2–3 minute walk', '5 minute walk', '10 minute walk'].map((value) => <Choice key={value} label={value} selected={form.maxPickupWalk === value} onClick={() => update({ maxPickupWalk: value })} testId={`choice-walk-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
-    <p className="field-label mt-6">How do you usually get to U of M right now?</p>
+    <p className="field-label">How do you usually get to U of M now?</p>
     <div className="choice-grid">
       {['Bus', 'Family or friend drives me', 'Uber / taxi', 'I drive myself', 'A mix of these'].map((value) => <Choice key={value} label={value} selected={form.currentTransportMethod === value} onClick={() => update({ currentTransportMethod: value })} testId={`choice-transport-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
-    <div className="field"><label htmlFor="duration">How long does your current one-way commute usually take?</label><select id="duration" value={form.currentCommuteDuration ?? ''} onChange={(event) => update({ currentCommuteDuration: event.target.value })} data-testid="select-commute-duration"><option value="">Choose one</option><option>Under 20 minutes</option><option>20–30 minutes</option><option>30–45 minutes</option><option>45–60 minutes</option><option>60+ minutes</option></select></div>
+    <div className="field"><label htmlFor="duration">How long does your usual one-way trip to campus take?</label><select id="duration" value={form.currentCommuteDuration ?? ''} onChange={(event) => update({ currentCommuteDuration: event.target.value })} data-testid="select-commute-duration"><option value="">Choose one</option><option>Under 20 minutes</option><option>20–30 minutes</option><option>30–45 minutes</option><option>45–60 minutes</option><option>60+ minutes</option></select></div>
   </QuestionFrame>;
 
-  if (step === 6) return <QuestionFrame step={step} total={total} kicker="Real life scheduling" title="How often do your campus plans change unexpectedly on the same day?" subtitle="We are designing around real student weeks, not a perfect calendar." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 6) return <QuestionFrame step={step} total={total} kicker="Schedule reliability" title="How often does your schedule change last-minute?" subtitle="Think same-day changes to when you go to campus or when you leave." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['Almost never', 'Maybe once a month', 'A few times a month', 'About once a week', 'Multiple times a week'].map((value) => <Choice key={value} label={value} selected={form.scheduleChangeFrequency === value} onClick={() => update({ scheduleChangeFrequency: value })} testId={`choice-schedule-change-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 7 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="Economics" title="What would make it worth it?" subtitle="What’s the minimum you’d want per month to regularly take one nearby student on days you’re already driving? Choose the lowest amount that would make the coordination worth it." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 7 && form.role === 'driver') return <QuestionFrame step={step} total={total} kicker="Economics" title="What would make it worth it?" subtitle="For regularly taking the same nearby U of M student on days you’re already driving." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <p className="field-label">What’s the minimum you’d want to receive per month?</p>
     <div className="choice-grid">
       {['$20–39', '$40–59', '$60–79', '$80–99', '$100–124', '$125+', 'I wouldn’t do it'].map((value) => <Choice key={value} label={value} selected={form.minimumMonthlyCompensation === value} onClick={() => update({ minimumMonthlyCompensation: value })} testId={`choice-compensation-${value.replace(/\W/g, '').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  if (step === 7) return <QuestionFrame step={step} total={total} kicker="Economics" title="What would feel worth paying?" subtitle="Assume your schedules fit and you usually ride with the same student driver." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 7) {
+    const riderPriceSubtitle = {
+      'To campus only': 'For recurring rides to U of M on the days you selected, with a nearby student whose schedule fits yours.',
+      'Home only': 'For recurring rides home from U of M on the days you selected, with a nearby student whose schedule fits yours.',
+      'Both directions': 'For recurring rides to and from U of M on the days you selected, with a nearby student whose schedule fits yours.',
+      'Depends on the day': 'For recurring rides on the parts of your week where your schedule matches another student.',
+    }[form.rideDirection] ?? 'For recurring rides on the parts of your week where your schedule matches another student.';
+    return <QuestionFrame step={step} total={total} kicker="Economics" title="What would you pay each month?" subtitle={riderPriceSubtitle} canContinue={canContinue} onBack={goBack} onContinue={next}>
+      <p className="field-label">What’s the most you’d realistically pay per month?</p>
     <div className="choice-grid">
       {['Under $40', '$40–59', '$60–79', '$80–99', '$100–124', '$125–149', '$150+', 'I wouldn’t pay'].map((value) => <Choice key={value} label={value} selected={form.maximumMonthlyWillingnessToPay === value} onClick={() => update({ maximumMonthlyWillingnessToPay: value })} testId={`choice-willingness-${value.replace(/\W/g, '').toLowerCase()}`} />)}
     </div>
-  </QuestionFrame>;
+    </QuestionFrame>;
+  }
 
-  if (step === 8) return <QuestionFrame step={step} total={total} kicker="The dealbreaker" title={`What would be most likely to stop you from ${form.role === 'driver' ? 'doing this' : 'using this'}?`} subtitle="Knowing the boundary is just as helpful as knowing the ideal." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 8) return <QuestionFrame step={step} total={total} kicker="The dealbreaker" title={form.role === 'driver' ? 'What would make you least likely to do this?' : 'What would make you least likely to use this?'} subtitle="Pick the biggest concern." canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {(form.role === 'driver' ? ['Rider being late', 'Extra driving time', 'Having someone I don’t know in my car', 'Compensation being too low', 'My schedule changes too much', 'Insurance / liability concerns', 'Other'] : ['Driver cancellations', 'Being late to class', 'Riding with someone I don’t know', 'Price', 'Pickup inconvenience', 'My schedule changes too much', 'Other']).map((value) => <Choice key={value} label={value} selected={form.dealbreaker === value} onClick={() => update({ dealbreaker: value, dealbreakerOther: value === 'Other' ? form.dealbreakerOther : null })} testId={`choice-dealbreaker-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
     {form.dealbreaker === 'Other' && <div className="field"><label htmlFor="other-dealbreaker">Tell us a little more</label><input id="other-dealbreaker" value={form.dealbreakerOther ?? ''} onChange={(event) => update({ dealbreakerOther: event.target.value || null })} placeholder="Optional" data-testid="input-dealbreaker-other" /></div>}
   </QuestionFrame>;
 
-  if (step === 9) return <QuestionFrame step={step} total={total} kicker="Actual intent" title="If we found a genuine schedule match, would you try this for a month?" subtitle="Choose the answer that feels most honest." canContinue={canContinue} onBack={goBack} onContinue={next}>
+  if (step === 9) return <QuestionFrame step={step} total={total} kicker="Actual intent" title="Would you actually try it?" subtitle={form.role === 'driver' ? 'If we found a Sage Creek student whose route and schedule genuinely fit yours, would you try taking them for a month?' : 'If we found a Sage Creek student driver whose route and schedule genuinely fit yours, would you try riding with them for a month?'} canContinue={canContinue} onBack={goBack} onContinue={next}>
     <div className="choice-grid">
       {['Definitely', 'Probably', 'Maybe', 'Probably not', 'No'].map((value) => <Choice key={value} label={value} selected={form.intentLevel === value} onClick={() => update({ intentLevel: value })} testId={`choice-intent-${value.replace(/\W/g, '-').toLowerCase()}`} />)}
     </div>
   </QuestionFrame>;
 
-  return <QuestionFrame step={step} total={total} kicker={roleLabel} title="Want us to reach out if your commute matches?" subtitle="Leave an email, phone number, or both." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Join the Sage Creek list" pending={createResponse.isPending}>
+  return <QuestionFrame step={step} total={total} kicker={roleLabel} title="Want us to reach out if your commute matches?" subtitle="If we find compatible Sage Creek commuters around your schedule, we’ll let you know." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Join the Sage Creek list" pending={createResponse.isPending}>
     <ContactFields form={form} update={update} />
     {createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}
   </QuestionFrame>;

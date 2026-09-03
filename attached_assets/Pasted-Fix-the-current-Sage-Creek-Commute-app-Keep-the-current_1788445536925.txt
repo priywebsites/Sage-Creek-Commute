@@ -1,0 +1,464 @@
+Fix the current Sage Creek Commute app. Keep the current visual design and layout. Do NOT redesign the site.
+
+Main goals:
+1. Make unclear questions easier to understand.
+2. Fix the broken “Back to Sage Creek Commute” button.
+3. Fix admin dashboard counting/data accuracy.
+4. Make Raw Responses show every answer from each respondent.
+5. Make sure CSV export is one complete row per person.
+
+====================================
+1. IMPROVE QUESTION WORDING
+====================================
+
+Some questions are too vague because users don’t fully understand what scenario they are answering about.
+
+Keep the wording concise, but give enough context.
+
+RIDER PRICE SCREEN:
+
+Change title from:
+“What would feel worth paying?”
+
+To:
+“What would you pay each month?”
+
+The subtitle should depend on the ride direction they selected earlier.
+
+If “To campus only”:
+“For recurring rides to U of M on the days you selected, with a nearby student whose schedule fits yours.”
+
+If “Home only”:
+“For recurring rides home from U of M on the days you selected, with a nearby student whose schedule fits yours.”
+
+If “Both directions”:
+“For recurring rides to and from U of M on the days you selected, with a nearby student whose schedule fits yours.”
+
+If “Depends on the day”:
+“For recurring rides on the parts of your week where your schedule matches another student.”
+
+Question:
+“What’s the most you’d realistically pay per month?”
+
+Keep the existing price options.
+
+------------------------------------
+
+DRIVER PRICE SCREEN:
+
+Title:
+“What would make it worth it?”
+
+Subtitle:
+“For regularly taking the same nearby U of M student on days you’re already driving.”
+
+Question:
+“What’s the minimum you’d want to receive per month?”
+
+Keep existing compensation ranges.
+
+It should be clear this is monthly compensation for someone already making their normal commute, not Uber-style driving.
+
+------------------------------------
+
+FLEXIBILITY SCREEN:
+
+Change title to:
+“How much can your commute times move?”
+
+Subtitle:
+“This helps us see how closely another student’s schedule needs to match yours.”
+
+Questions:
+“How flexible are you with your arrival time?”
+“How flexible are you with when you leave campus?”
+
+Keep current answer choices.
+
+------------------------------------
+
+RIDE DIRECTION SCREEN:
+
+Change title to:
+“Which part of your commute would you use this for?”
+
+Subtitle:
+“Choose what would actually be useful during a normal week.”
+
+Keep:
+- To campus only
+- Home only
+- Both directions
+- Depends on the day
+
+------------------------------------
+
+SCHEDULE RELIABILITY:
+
+Title:
+“How often does your schedule change last-minute?”
+
+Subtitle:
+“Think same-day changes to when you go to campus or when you leave.”
+
+Keep current frequency choices.
+
+------------------------------------
+
+DRIVER DETOUR:
+
+Title:
+“How much extra driving is reasonable?”
+
+Subtitle:
+“Assume the student lives close to your normal route.”
+
+Question:
+“What’s the most extra time you’d tolerate for a pickup?”
+
+Seats question:
+“How many students would you realistically be willing to take?”
+
+------------------------------------
+
+RIDER PICKUP:
+
+Title:
+“How would pickup work for you?”
+
+Question:
+“How far would you be willing to walk to meet your driver?”
+
+Also change:
+“How do you usually get to U of M right now?”
+to:
+“How do you usually get to U of M now?”
+
+And:
+“How long does your current one-way commute usually take?”
+to:
+“How long does your usual one-way trip to campus take?”
+
+------------------------------------
+
+DEALBREAKER:
+
+Driver title:
+“What would make you least likely to do this?”
+
+Rider title:
+“What would make you least likely to use this?”
+
+Subtitle for both:
+“Pick the biggest concern.”
+
+Keep existing choices.
+
+------------------------------------
+
+INTENT:
+
+Title:
+“Would you actually try it?”
+
+Driver:
+“If we found a Sage Creek student whose route and schedule genuinely fit yours, would you try taking them for a month?”
+
+Rider:
+“If we found a Sage Creek student driver whose route and schedule genuinely fit yours, would you try riding with them for a month?”
+
+Keep:
+Definitely
+Probably
+Maybe
+Probably not
+No
+
+------------------------------------
+
+CONTACT:
+
+Title:
+“Want us to reach out if your commute matches?”
+
+Subtitle:
+“If we find compatible Sage Creek commuters around your schedule, we’ll let you know.”
+
+Keep email and phone fields.
+
+Privacy text:
+“We’ll only use this to contact you about Sage Creek Commute.”
+
+====================================
+2. FIX BACK BUTTON
+====================================
+
+The button on the success screen called:
+
+“Back to Sage Creek Commute”
+
+currently does nothing.
+
+Fix it so it reliably:
+- goes to `/`
+- resets questionnaire state
+- scrolls to the top
+- shows the normal public landing page
+
+Test it after fixing.
+
+====================================
+3. FIX ADMIN COUNTING
+====================================
+
+Audit the admin dashboard because some counts appear wrong.
+
+IMPORTANT RULE:
+
+ONE completed questionnaire submission = ONE rider or driver.
+
+Do NOT count:
+- schedule rows
+- weekdays
+- arrival times
+- analytics events
+
+as separate users.
+
+Example:
+
+One rider selected:
+Monday 10:30 AM
+Tuesday 10:00 AM
+
+Correct:
+Total responses: 1
+Riders: 1
+
+But schedule stats can correctly show:
+Monday: 1 active rider commute
+Tuesday: 1 active rider commute
+
+Arrival distribution can correctly show:
+10:30 AM: 1
+10:00 AM: 1
+
+The dashboard must clearly separate:
+
+UNIQUE PEOPLE
+from
+COMMUTE-DAY DATA.
+
+All person-level stats should use unique completed response IDs.
+
+This includes:
+- total responses
+- driver count
+- rider count
+- definitely/probably count
+- driver compensation distribution
+- rider willingness-to-pay distribution
+- transportation method
+- commute duration
+- reliability
+- dealbreakers
+
+For schedule/day/time charts, multiple entries from one person are allowed because they travel on multiple days.
+
+====================================
+4. POTENTIAL OVERLAP
+====================================
+
+Potential overlap should be calculated by:
+
+weekday + arrival time/window
+
+For each bucket show:
+- unique drivers
+- unique riders
+
+Example:
+
+Monday · 8:30 AM
+3 drivers
+5 riders
+
+If duplicate database rows exist for the same person/day/time, count that person only once in that bucket.
+
+====================================
+5. RAW RESPONSES
+====================================
+
+I really like the current Raw Responses section at the bottom.
+
+Keep that overall clean style.
+
+However, I want EVERY answer from each completed respondent visible.
+
+Each completed person should appear ONCE.
+
+Make each row expandable, or use a clean card/details area.
+
+At the top of each response show:
+- date
+- role
+- contact
+- intent
+
+Then show compact labelled pills or fields for all their answers.
+
+COMMON FIELDS:
+- Lives in Sage Creek
+- U of M student
+- Ride direction
+- Arrival flexibility
+- Leave flexibility
+- Schedule reliability
+- Dealbreaker
+- Dealbreaker other text if used
+- Intent
+- Email
+- Phone
+- Prefers text
+- Source/UTM if available
+
+SCHEDULE:
+Show every active day clearly.
+
+Example:
+
+MON
+10:30 AM → 5:30 PM
+
+TUE
+10:00 AM → 6:30 PM
+
+THU
+8:30 AM → 4:00 PM
+
+DRIVER ONLY:
+- Maximum detour
+- Number of seats
+- Minimum monthly compensation
+
+RIDER ONLY:
+- Maximum pickup walk
+- Current transportation
+- Current commute duration
+- Maximum monthly willingness to pay
+
+Do not show irrelevant null fields.
+
+For example, a rider should NOT show:
+“Minimum driver compensation: null”
+
+Just omit it.
+
+====================================
+6. RAW RESPONSE FILTERS
+====================================
+
+Keep current filtering/search.
+
+Make sure filters correctly work for:
+- role
+- weekday
+- arrival time
+- intent
+- price bucket
+- contact/search text
+
+If easy, also allow filtering by:
+- dealbreaker
+- schedule reliability
+
+Do not overcomplicate the UI.
+
+====================================
+7. CSV EXPORT
+====================================
+
+Fix/audit CSV export.
+
+ONE completed user = ONE CSV row.
+
+Include all questionnaire answers.
+
+Flatten schedule into columns like:
+
+monday_active
+monday_arrival
+monday_leave
+
+tuesday_active
+tuesday_arrival
+tuesday_leave
+
+etc.
+
+Do NOT export one row per weekday.
+
+====================================
+8. DUPLICATE SUBMISSIONS
+====================================
+
+Check that the final submit action cannot accidentally create multiple completed responses from:
+- double clicking
+- repeated API calls
+- React rendering
+- network retries
+
+Disable the final submit button while submission is processing.
+
+Do not delete any legitimate existing data.
+
+====================================
+9. ADMIN LABELS
+====================================
+
+Make dashboard labels clearer where necessary.
+
+For example:
+
+“Total responses”
+can remain person-level.
+
+“Riders”
+must mean unique riders.
+
+For schedule charts use wording like:
+
+“Active commute days by weekday”
+
+“Scheduled arrivals”
+
+Add a small note under schedule charts:
+“Counts commute days, not unique students.”
+
+That way one student travelling Monday and Tuesday is correctly represented twice in schedule data without implying there are two students.
+
+====================================
+10. TEST EVERYTHING
+====================================
+
+Before finishing:
+
+1. Verify the current existing rider counts as exactly 1 rider.
+2. Their Monday and Tuesday schedules should still both appear in schedule stats.
+3. Submit one test driver response.
+4. Submit one test rider response.
+5. Confirm each creates exactly one completed user.
+6. Check all admin totals.
+7. Check potential overlap.
+8. Make sure every questionnaire answer appears in Raw Responses.
+9. Make sure CSV exports one row per completed person.
+10. Make sure “Back to Sage Creek Commute” works.
+11. Do not wipe current responses.
+12. Do not redesign the site.
+
+Focus only on:
+- clearer question context
+- navigation bug
+- data accuracy
+- full response visibility
+- reliable admin analytics
