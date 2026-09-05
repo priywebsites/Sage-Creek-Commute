@@ -6,18 +6,28 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PosterSource } from './posterSource';
+import type { ResponseInputContactMethod } from './responseInputContactMethod';
 import type { ResponseInputRole } from './responseInputRole';
+import type { ResponseInputStudentStatus } from './responseInputStudentStatus';
+import type { ResponseInputSurveyVersion } from './responseInputSurveyVersion';
 import type { ScheduleDayInput } from './scheduleDayInput';
 
 export interface ResponseInput {
   role: ResponseInputRole;
+  surveyVersion: ResponseInputSurveyVersion;
   posterSource: PosterSource;
   /** @minLength 1 */
   submissionId: string;
   livesInSageCreek: boolean;
+  livesOutsideSageCreek: boolean;
+  /** @nullable */
+  neighborhood: string | null;
+  studentStatus: ResponseInputStudentStatus;
   isUofMStudent: boolean;
   /** @minItems 1 */
   schedule: ScheduleDayInput[];
+  /** @minimum 0 */
+  weeklyTripCount: number;
   /** @minLength 1 */
   arrivalFlexibility: string;
   /** @minLength 1 */
@@ -38,18 +48,40 @@ export interface ResponseInput {
   minimumMonthlyCompensation?: string | null;
   /** @nullable */
   maximumMonthlyWillingnessToPay?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  driverRateCents?: number | null;
+  /** @nullable */
+  driverRateSelection?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  riderPriceCents?: number | null;
+  /** @nullable */
+  riderPriceSelection?: string | null;
   /** @minLength 1 */
   scheduleChangeFrequency: string;
   /** @minLength 1 */
   dealbreaker: string;
   /** @nullable */
   dealbreakerOther?: string | null;
+  /** @nullable */
+  finalConcern?: string | null;
+  /** @nullable */
+  finalConcernOther?: string | null;
   /** @minLength 1 */
   intentLevel: string;
+  /** @nullable */
+  firstName?: string | null;
   /** @nullable */
   email: string | null;
   /** @nullable */
   phone: string | null;
+  contactMethod?: ResponseInputContactMethod;
+  contactPermission?: boolean;
   prefersText: boolean;
   /** @nullable */
   utmSource?: string | null;

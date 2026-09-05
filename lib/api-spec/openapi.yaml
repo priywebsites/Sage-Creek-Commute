@@ -265,15 +265,25 @@ components:
         departure:
           type: string
           minLength: 1
+        directions:
+          type: array
+          items:
+            type: string
+            enum: [to_campus, from_campus]
     ResponseInput:
       type: object
       required:
         - role
+        - surveyVersion
         - posterSource
         - submissionId
         - livesInSageCreek
+        - livesOutsideSageCreek
+        - neighborhood
+        - studentStatus
         - isUofMStudent
         - schedule
+        - weeklyTripCount
         - arrivalFlexibility
         - departureFlexibility
         - rideDirection
@@ -287,6 +297,9 @@ components:
         role:
           type: string
           enum: [driver, rider]
+        surveyVersion:
+          type: string
+          enum: [v1, v2]
         posterSource:
           $ref: "#/components/schemas/PosterSource"
         submissionId:
@@ -294,6 +307,13 @@ components:
           minLength: 1
         livesInSageCreek:
           type: boolean
+        livesOutsideSageCreek:
+          type: boolean
+        neighborhood:
+          type: ["string", "null"]
+        studentStatus:
+          type: string
+          enum: [fort_garry, starting_fort_garry, other, legacy]
         isUofMStudent:
           type: boolean
         schedule:
@@ -301,6 +321,9 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/ScheduleDayInput"
+        weeklyTripCount:
+          type: number
+          minimum: 0
         arrivalFlexibility:
           type: string
           minLength: 1
@@ -324,6 +347,16 @@ components:
           type: ["string", "null"]
         maximumMonthlyWillingnessToPay:
           type: ["string", "null"]
+        driverRateCents:
+          type: ["number", "null"]
+          minimum: 0
+        driverRateSelection:
+          type: ["string", "null"]
+        riderPriceCents:
+          type: ["number", "null"]
+          minimum: 0
+        riderPriceSelection:
+          type: ["string", "null"]
         scheduleChangeFrequency:
           type: string
           minLength: 1
@@ -332,13 +365,24 @@ components:
           minLength: 1
         dealbreakerOther:
           type: ["string", "null"]
+        finalConcern:
+          type: ["string", "null"]
+        finalConcernOther:
+          type: ["string", "null"]
         intentLevel:
           type: string
           minLength: 1
+        firstName:
+          type: ["string", "null"]
         email:
           type: ["string", "null"]
         phone:
           type: ["string", "null"]
+        contactMethod:
+          type: string
+          enum: [phone, email, both, none]
+        contactPermission:
+          type: boolean
         prefersText:
           type: boolean
         utmSource:

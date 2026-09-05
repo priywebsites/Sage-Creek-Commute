@@ -1,1 +1,2 @@
 - [Analytics schema migrations](analytics-schema-migrations.md) — preserve existing event rows when adding attribution constraints; noninteractive schema pushes may ask to truncate.
+- [OpenAPI numeric fields](openapi-zod-compatibility.md) — this workspace’s Zod generator expects number, not integer, for new numeric request fields.

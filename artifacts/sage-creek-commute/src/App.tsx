@@ -50,10 +50,13 @@ const queryClient = new QueryClient();
 type Role = 'driver' | 'rider';
 type ExitKind = 'location' | 'student' | null;
 type DayName = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+type Direction = 'to_campus' | 'from_campus';
 const qrPosterSources = new Set<PosterSource>(['P01', 'P02', 'P03']);
 const posterAttributionKey = 'sage_creek_commute_poster_source';
 const anonymousVisitorKey = 'sage_creek_commute_anonymous_visitor';
 const browserSessionKey = 'sage_creek_commute_browser_session';
+const selectedRoleKey = 'sage_creek_commute_selected_role_v2';
+const surveyDraftKey = 'sage_creek_commute_survey_draft_v2';
 
 const days: Array<{ key: DayName; label: string }> = [
   { key: 'monday', label: 'Mon' },
@@ -79,19 +82,25 @@ const departureTimeOptions = Array.from({ length: 35 }, (_, index) => {
 const arrivalChoices = [...arrivalTimeOptions, 'Varies'];
 const departureChoices = [...departureTimeOptions, 'Varies'];
 
-const blankSchedule = days.map(({ key }) => ({
+const blankSchedule: ResponseInput['schedule'] = days.map(({ key }) => ({
   day: key,
-  active: true,
-  arrival: '8:30 AM',
-  departure: '4:30 PM',
+  active: false,
+  arrival: 'Varies',
+  departure: 'Varies',
+  directions: [],
 }));
 
 const initialResponseFields: Omit<ResponseInput, 'role'> = {
+  surveyVersion: 'v2',
   posterSource: 'direct_unknown',
   submissionId: '',
   livesInSageCreek: true,
+  livesOutsideSageCreek: false,
+  neighborhood: null,
+  studentStatus: 'fort_garry',
   isUofMStudent: true,
   schedule: blankSchedule,
+  weeklyTripCount: 0,
   arrivalFlexibility: '±15 minutes is fine',
   departureFlexibility: '±15 minutes is fine',
   rideDirection: 'To campus only',
@@ -102,18 +111,43 @@ const initialResponseFields: Omit<ResponseInput, 'role'> = {
   currentCommuteDuration: null,
   minimumMonthlyCompensation: null,
   maximumMonthlyWillingnessToPay: null,
+  driverRateCents: null,
+  driverRateSelection: null,
+  riderPriceCents: null,
+  riderPriceSelection: null,
   scheduleChangeFrequency: 'A few times a month',
   dealbreaker: '',
   dealbreakerOther: null,
+  finalConcern: null,
+  finalConcernOther: null,
   intentLevel: '',
+  firstName: null,
   email: null,
   phone: null,
+  contactMethod: 'none',
+  contactPermission: false,
   prefersText: false,
   utmSource: null,
   utmMedium: null,
   utmCampaign: null,
   referrer: typeof document !== 'undefined' ? document.referrer || null : null,
 };
+
+function readStoredRole(): Role | null {
+  if (typeof window === 'undefined') return null;
+  const value = window.localStorage.getItem(selectedRoleKey);
+  return value === 'driver' || value === 'rider' ? value : null;
+}
+
+function readStoredDraft(role: Role): { step: number; form: ResponseInput } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(surveyDraftKey) ?? 'null');
+    return parsed?.role === role && parsed?.form ? { step: Math.min(Math.max(Number(parsed.step) || 0, 0), 10), form: parsed.form as ResponseInput } : null;
+  } catch {
+    return null;
+  }
+}
 
 function createClientId(prefix: string): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -239,7 +273,7 @@ function RouteIllustration() {
   );
 }
 
-function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
+function LegacyLandingPage({ onStart }: { onStart: (role: Role) => void }) {
   const createEvent = useCreateEvent();
   useEffect(() => {
     trackEvent(createEvent.mutate, EventInputEventName.landing_viewed);
@@ -393,7 +427,7 @@ function QuestionFrame({
       <div className="question-top">
         <div className="question-nav-row">
           <Link href="/" className="question-brand" data-testid="link-question-brand"><Brand /></Link>
-          <span className="step-count font-mono-custom">0{step + 1} <span>/ {String(total).padStart(2, '0')}</span></span>
+          <span className="step-count font-mono-custom">{String(step + 1).padStart(2, '0')} <span>/ {String(total).padStart(2, '0')}</span></span>
         </div>
         <div className="progress-track" aria-label={`Step ${step + 1} of ${total}`}><div className="progress-fill" style={{ width: `${((step + 1) / total) * 100}%` }} /></div>
         {role && onChangeRole && <div className="question-role-row"><span>{role === 'driver' ? 'Driver' : 'Rider'} · Sage Creek → U of M</span><button type="button" onClick={onChangeRole} data-testid="button-change-role">Change</button></div>}
@@ -477,7 +511,7 @@ function ContactFields({ form, update }: { form: ResponseInput; update: (patch: 
   );
 }
 
-function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role; onComplete: (response: ResponseInput) => void; onExit: () => void }) {
+function LegacyQuestionnaire({ initialRole, onComplete, onExit }: { initialRole: Role; onComplete: (response: ResponseInput) => void; onExit: () => void }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<ResponseInput>(() => ({
     ...initialResponseFields,
@@ -678,13 +712,393 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   </QuestionFrame>;
 }
 
+function MatchIllustration() {
+  return (
+    <div className="match-illustration" aria-label="Example match">
+      <div className="match-illustration-label">Example match</div>
+      <div className="match-stage">
+        <div className="match-card driver">
+          <span className="match-card-role">Driver</span>
+          <strong>Mon / Wed / Fri</strong>
+          <span>Arrives 8:30 AM</span>
+        </div>
+        <svg className="match-connector" viewBox="0 0 180 100" aria-hidden="true">
+          <path d="M8 50 C48 12, 132 88, 172 50" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
+          <circle cx="90" cy="50" r="5" fill="currentColor" />
+        </svg>
+        <div className="match-card rider">
+          <span className="match-card-role">Rider</span>
+          <strong>Mon / Wed / Fri</strong>
+          <span>Needs to arrive by 8:45 AM</span>
+        </div>
+      </div>
+      <p className="match-caption">Similar times. A nearby pickup spot.</p>
+    </div>
+  );
+}
+
+function HowItWouldWork() {
+  const [role, setRole] = useState<Role>('rider');
+  const copy = role === 'rider'
+    ? [
+      ['01', 'Tell us when you need rides', 'Choose your campus days, arrival times and when you’re ready to head home.'],
+      ['02', 'Find someone going your way', 'We’d look for a nearby student driving at times that work for you.'],
+      ['03', 'Set up your regular rides', 'Agree on the days and pickup spot. The plan is a monthly subscription for your arranged rides.'],
+    ]
+    : [
+      ['01', 'Add the trips you already make', 'Tell us when you drive to campus and home, and how many seats you can offer.'],
+      ['02', 'Find riders who fit your trip', 'We’d look for nearby students whose times work with yours.'],
+      ['03', 'Earn money for giving rides', 'Agree on the trips and pickup spot. You’d get paid for rides you complete.'],
+    ];
+  return (
+    <section id="how-it-works" className="how-section">
+      <div className="container-wide">
+        <div className="how-header">
+          <div>
+            <div className="eyebrow">The idea</div>
+            <h2 className="display-lg mt-4">How it would work</h2>
+          </div>
+          <div className="how-toggle" role="group" aria-label="Choose an explanation">
+            {(['rider', 'driver'] as Role[]).map((option) => (
+              <button key={option} type="button" className={role === option ? 'active' : ''} onClick={() => setRole(option)} data-testid={`button-how-${option}`}>
+                {option === 'rider' ? 'Riders' : 'Drivers'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="how-steps">
+          {copy.map(([number, title, body]) => <Feature key={number} number={number} title={title} body={body} />)}
+        </div>
+        <p className="how-note">Right now, we’re checking interest, schedules and pricing. If you leave your email, we can contact you about a possible match. Completing the survey does not reserve a ride.</p>
+      </div>
+    </section>
+  );
+}
+
+function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
+  const createEvent = useCreateEvent();
+  useEffect(() => {
+    trackEvent(createEvent.mutate, EventInputEventName.landing_viewed);
+  }, [createEvent.mutate]);
+  const selectRole = (role: Role) => {
+    trackEvent(createEvent.mutate, role === 'driver' ? EventInputEventName.driver_role_selected : EventInputEventName.rider_role_selected, role);
+    trackEvent(createEvent.mutate, EventInputEventName.survey_started, role);
+    onStart(role);
+  };
+  return (
+    <main className="site-shell">
+      <PublicHeader />
+      <section className="hero-section redesigned-hero">
+        <div className="container-wide hero-grid">
+          <div className="hero-copy">
+            <div className="eyebrow fade-up">Sage Creek ↔ U of M</div>
+            <h1 className="display-xl fade-up delay-1">Same campus.<br /><em>Better commute.</em></h1>
+            <p className="hero-lede fade-up delay-2">Drive to U of M? Earn money taking another student on trips you already make. Need rides? Find someone nearby who travels at times that work for you.</p>
+            <p className="stage-clarification fade-up delay-2">We’re collecting schedules to see who we could match. No payment or commitment.</p>
+            <div className="hero-actions fade-up delay-3">
+              <RoleChoiceButtons onSelect={selectRole} testPrefix="hero" />
+            </div>
+          </div>
+          <MatchIllustration />
+        </div>
+      </section>
+      <HowItWouldWork />
+      <section className="role-cta-section redesigned-cta">
+        <div className="container-wide role-cta-card">
+          <div>
+            <div className="eyebrow">Help us check the route</div>
+            <h2>Could your commute line up?</h2>
+            <p>Choose the option that describes you. The survey takes a few short screens.</p>
+          </div>
+          <RoleChoiceButtons onSelect={selectRole} testPrefix="bottom" />
+        </div>
+      </section>
+      <footer className="site-footer">
+        <div className="container-wide footer-row">
+          <Brand />
+          <span>For Sage Creek students, by a local team.</span>
+          <Link href="/admin" className="footer-admin" data-testid="link-footer-admin">Private admin <ExternalLink size={13} /></Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function scheduleDirections(entry: ResponseInput['schedule'][number]): Direction[] {
+  return entry.directions?.length ? entry.directions : entry.active ? ['to_campus', 'from_campus'] : [];
+}
+
+function weeklyTripCount(schedule: ResponseInput['schedule']): number {
+  return schedule.reduce((total, entry) => total + scheduleDirections(entry).length, 0);
+}
+
+function ScheduleDirectionEditor({ schedule, onChange }: { schedule: ResponseInput['schedule']; onChange: (schedule: ResponseInput['schedule']) => void }) {
+  const toggleDirection = (day: DayName, direction: Direction) => {
+    onChange(schedule.map((entry) => {
+      if (entry.day !== day) return entry;
+      const current = scheduleDirections(entry);
+      const directions = current.includes(direction) ? current.filter((item) => item !== direction) : [...current, direction];
+      return {
+        ...entry,
+        active: directions.length > 0,
+        directions,
+        arrival: directions.includes('to_campus') ? (entry.arrival === 'Varies' ? '8:30 AM' : entry.arrival) : 'Varies',
+        departure: directions.includes('from_campus') ? (entry.departure === 'Varies' ? '4:30 PM' : entry.departure) : 'Varies',
+      };
+    }));
+  };
+  return (
+    <div className="direction-list">
+      {days.map(({ key, label }) => {
+        const current = schedule.find((entry) => entry.day === key) ?? blankSchedule[0];
+        const directions = scheduleDirections(current);
+        return (
+          <div className={`direction-day ${directions.length ? 'selected' : ''}`} key={key}>
+            <div className="direction-day-heading"><strong>{label}</strong><span>{directions.length ? `${directions.length} direction${directions.length > 1 ? 's' : ''}` : 'Not this day'}</span></div>
+            <div className="direction-options">
+              {([['to_campus', 'To campus'], ['from_campus', 'Home from campus']] as [Direction, string][]).map(([direction, labelText]) => (
+                <button type="button" key={direction} className={`direction-option ${directions.includes(direction) ? 'selected' : ''}`} onClick={() => toggleDirection(key, direction)} aria-pressed={directions.includes(direction)} data-testid={`choice-${key}-${direction}`}>
+                  <span>{labelText}</span><span className="choice-check">{directions.includes(direction) && <Check size={14} strokeWidth={3} />}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScheduleTimesEditor({ schedule, onChange }: { schedule: ResponseInput['schedule']; onChange: (schedule: ResponseInput['schedule']) => void }) {
+  const updateTime = (day: DayName, field: 'arrival' | 'departure', value: string) => onChange(schedule.map((entry) => entry.day === day ? { ...entry, [field]: value } : entry));
+  const copyToOtherDays = (sourceDay: DayName) => {
+    const source = schedule.find((entry) => entry.day === sourceDay);
+    if (!source) return;
+    onChange(schedule.map((entry) => entry.day === sourceDay ? entry : {
+      ...entry,
+      active: source.active,
+      directions: source.directions ? [...source.directions] : [],
+      arrival: source.arrival,
+      departure: source.departure,
+    }));
+  };
+  return (
+    <div className="time-list">
+      {schedule.filter((entry) => entry.active && scheduleDirections(entry).length).map((entry) => {
+        const directions = scheduleDirections(entry);
+        const label = days.find((day) => day.key === entry.day)?.label ?? entry.day;
+        return (
+          <div className="time-day" key={entry.day}>
+            <div className="time-day-heading"><strong>{label}</strong><button type="button" className="copy-times" onClick={() => copyToOtherDays(entry.day)}><Clipboard size={13} /> Copy to other days</button></div>
+            <div className="time-fields">
+              {directions.includes('to_campus') && <label>Usually arrive on campus at<select value={entry.arrival} onChange={(event) => updateTime(entry.day, 'arrival', event.target.value)} data-testid={`select-arrival-${entry.day}`}>{arrivalTimeOptions.map((time) => <option key={time}>{time}</option>)}</select></label>}
+              {directions.includes('from_campus') && <label>Usually leave campus at<select value={entry.departure} onChange={(event) => updateTime(entry.day, 'departure', event.target.value)} data-testid={`select-departure-${entry.day}`}>{departureTimeOptions.map((time) => <option key={time}>{time}</option>)}</select></label>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const riderPriceOptions = [
+  { label: '$20/month', value: 'preset_20', cents: 2000 },
+  { label: '$40/month', value: 'preset_40', cents: 4000 },
+  { label: '$60/month', value: 'preset_60', cents: 6000 },
+  { label: '$80/month', value: 'preset_80', cents: 8000 },
+  { label: '$100/month', value: 'preset_100', cents: 10000 },
+  { label: 'Enter my own amount', value: 'custom', cents: null },
+  { label: 'Not sure', value: 'not_sure', cents: null },
+  { label: 'Only if free', value: 'free', cents: 0 },
+];
+
+const driverRateOptions = [
+  { label: '$1 per passenger per trip', value: 'preset_1', cents: 100 },
+  { label: '$2 per passenger per trip', value: 'preset_2', cents: 200 },
+  { label: '$3 per passenger per trip', value: 'preset_3', cents: 300 },
+  { label: '$4 per passenger per trip', value: 'preset_4', cents: 400 },
+  { label: '$5 per passenger per trip', value: 'preset_5', cents: 500 },
+  { label: 'Enter my own amount', value: 'custom', cents: null },
+  { label: 'Not sure', value: 'not_sure', cents: null },
+];
+
+function contactFormValid(form: ResponseInput): boolean {
+  if (form.contactMethod === 'none') return true;
+  if (!form.firstName?.trim()) return false;
+  const phoneValid = Boolean(form.phone && form.phone.replace(/\D/g, '').length >= 7);
+  const emailValid = Boolean(form.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email));
+  if (form.contactMethod === 'phone') return phoneValid;
+  if (form.contactMethod === 'email') return emailValid;
+  return phoneValid && emailValid;
+}
+
+function NewContactFields({ form, update }: { form: ResponseInput; update: (patch: Partial<ResponseInput>) => void }) {
+  const methods: Array<{ value: NonNullable<ResponseInput['contactMethod']>; label: string }> = [
+    { value: 'phone', label: 'Phone number' },
+    { value: 'email', label: 'Email' },
+    { value: 'both', label: 'Both' },
+    { value: 'none', label: 'I don’t want to be contacted' },
+  ];
+  return (
+    <div className="contact-fields">
+      <div className="contact-note"><ShieldCheck size={16} /><span>You can leave a phone number, email, or both. We’ll only use your information for this commute project.</span></div>
+      <div className="choice-grid contact-method-grid">
+        {methods.map((method) => <Choice key={method.value} label={method.label} selected={form.contactMethod === method.value} onClick={() => update({ contactMethod: method.value, ...(method.value === 'none' ? { firstName: null, phone: null, email: null, contactPermission: false } : {}) })} testId={`choice-contact-${method.value}`} />)}
+      </div>
+      {form.contactMethod !== 'none' && <>
+        <div className="field"><label htmlFor="first-name">First name</label><input id="first-name" value={form.firstName ?? ''} onChange={(event) => update({ firstName: event.target.value || null })} data-testid="input-first-name" /></div>
+        {(form.contactMethod === 'phone' || form.contactMethod === 'both') && <div className="field"><label htmlFor="phone-v2">Phone number</label><input id="phone-v2" type="tel" value={form.phone ?? ''} onChange={(event) => update({ phone: event.target.value || null })} placeholder="204 555 0142" data-testid="input-phone" /></div>}
+        {(form.contactMethod === 'email' || form.contactMethod === 'both') && <div className="field"><label htmlFor="email-v2">Email address</label><input id="email-v2" type="email" value={form.email ?? ''} onChange={(event) => update({ email: event.target.value || null })} placeholder="you@example.com" data-testid="input-email" /></div>}
+        <label className="permission-check"><input type="checkbox" checked={form.contactPermission} onChange={(event) => update({ contactPermission: event.target.checked })} /> <span>You can contact me about a possible commute match.</span></label>
+      </>}
+      {!contactFormValid(form) && <p className="field-error">Add the requested name and contact details to continue.</p>}
+    </div>
+  );
+}
+
+function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role; onComplete: (response: ResponseInput) => void; onExit: () => void }) {
+  const storedDraft = useMemo(() => readStoredDraft(initialRole), [initialRole]);
+  const [step, setStep] = useState(() => storedDraft?.step ?? 0);
+  const [form, setForm] = useState<ResponseInput>(() => storedDraft?.form ?? ({
+    ...initialResponseFields,
+    role: initialRole,
+    posterSource: getAttributionContext().posterSource,
+    submissionId: createClientId('submission'),
+    schedule: blankSchedule.map((entry) => ({ ...entry, directions: [] })),
+  }));
+  const [exitKind, setExitKind] = useState<ExitKind>(null);
+  const submitGuard = useRef(false);
+  const createResponse = useCreateResponse();
+  const createEvent = useCreateEvent();
+  const total = 11;
+  const update = (patch: Partial<ResponseInput>) => setForm((previous) => ({ ...previous, ...patch }));
+  useEffect(() => {
+    if (typeof window === 'undefined' || exitKind) return;
+    window.localStorage.setItem(selectedRoleKey, initialRole);
+    window.localStorage.setItem(surveyDraftKey, JSON.stringify({ role: initialRole, step, form }));
+  }, [exitKind, form, initialRole, step]);
+  const reset = () => {
+    window.localStorage.removeItem(surveyDraftKey);
+    setForm({
+      ...initialResponseFields,
+      role: initialRole,
+      posterSource: getAttributionContext().posterSource,
+      submissionId: createClientId('submission'),
+      schedule: blankSchedule.map((entry) => ({ ...entry, directions: [] })),
+    });
+    setStep(0);
+    setExitKind(null);
+    submitGuard.current = false;
+  };
+  const scheduleReady = form.schedule.some((entry) => entry.active && scheduleDirections(entry).length);
+  const timesReady = form.schedule.filter((entry) => entry.active).every((entry) => {
+    const directions = scheduleDirections(entry);
+    return directions.length > 0 &&
+      (!directions.includes('to_campus') || entry.arrival !== 'Varies') &&
+      (!directions.includes('from_campus') || entry.departure !== 'Varies');
+  });
+  const canContinue = useMemo(() => {
+    if (step === 0) return Boolean(form.studentStatus);
+    if (step === 1) return Boolean(form.neighborhood?.trim());
+    if (step === 2) return scheduleReady;
+    if (step === 3) return timesReady;
+    if (step === 4) return Boolean(form.scheduleChangeFrequency);
+    if (step === 5) return Boolean(form.arrivalFlexibility) && (form.role === 'rider' || Boolean(form.maxDetour));
+    if (step === 6) return form.role === 'driver' ? Boolean(form.seats) : Boolean(form.maxPickupWalk);
+    if (step === 7) {
+      if (form.role === 'driver') return Boolean(form.driverRateSelection && (form.driverRateSelection !== 'custom' || form.driverRateCents !== null));
+      return Boolean(form.riderPriceSelection && (form.riderPriceSelection !== 'custom' || form.riderPriceCents !== null));
+    }
+    if (step === 8) return Boolean(form.dealbreaker && (form.dealbreaker !== 'Other' || form.dealbreakerOther?.trim()));
+    if (step === 9) return contactFormValid(form);
+    if (step === 10) return form.finalConcern !== 'Something else' || Boolean(form.finalConcernOther?.trim());
+    return true;
+  }, [form, scheduleReady, step, timesReady]);
+  const next = () => {
+    if (!canContinue) return;
+    if (step === 0 && form.studentStatus === 'other') { setExitKind('student'); return; }
+    if (step === total - 1) {
+      if (submitGuard.current || createResponse.isPending) return;
+      submitGuard.current = true;
+      const payload: ResponseInput = {
+        ...form,
+        isUofMStudent: form.studentStatus !== 'other',
+        livesInSageCreek: !form.livesOutsideSageCreek,
+        weeklyTripCount: weeklyTripCount(form.schedule),
+        minimumMonthlyCompensation: form.role === 'driver' && form.driverRateSelection ? (driverRateOptions.find((option) => option.value === form.driverRateSelection)?.label ?? 'Custom') : null,
+        maximumMonthlyWillingnessToPay: form.role === 'rider' && form.riderPriceSelection ? (riderPriceOptions.find((option) => option.value === form.riderPriceSelection)?.label ?? 'Custom') : null,
+        prefersText: form.contactMethod === 'phone' || form.contactMethod === 'both',
+        intentLevel: 'Not asked in v2',
+        posterSource: getAttributionContext().posterSource,
+        referrer: typeof document !== 'undefined' ? document.referrer || null : null,
+      };
+      createResponse.mutate({ data: payload }, {
+        onSuccess: () => {
+          window.localStorage.removeItem(surveyDraftKey);
+          window.localStorage.removeItem(selectedRoleKey);
+          onComplete(payload);
+        },
+        onError: () => { submitGuard.current = false; },
+      });
+      trackEvent(createEvent.mutate, EventInputEventName.form_completed, form.role, 11);
+      return;
+    }
+    setStep((current) => current + 1);
+    trackEvent(createEvent.mutate, EventInputEventName.step_reached, form.role, step + 2);
+  };
+  const goBack = () => {
+    if (step === 0) { onExit(); return; }
+    setStep((current) => current - 1);
+  };
+  const changeRole = () => {
+    if (step > 0 && typeof window !== 'undefined' && !window.confirm('Changing your role will reset this questionnaire. Continue?')) return;
+    onExit();
+  };
+  const frameRoleProps = { role: form.role, onChangeRole: changeRole };
+  if (exitKind) return <QualificationExit kind={exitKind} onReset={reset} />;
+  if (step === 0) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="1 · Campus check" title="Are you a U of M student?" subtitle="This is for students travelling to the Fort Garry campus." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="choice-grid">
+      <Choice label="Yes, at Fort Garry" selected={form.studentStatus === 'fort_garry'} onClick={() => update({ studentStatus: 'fort_garry', isUofMStudent: true })} testId="choice-student-fort-garry" />
+      <Choice label="Starting at Fort Garry this term" selected={form.studentStatus === 'starting_fort_garry'} onClick={() => update({ studentStatus: 'starting_fort_garry', isUofMStudent: true })} testId="choice-student-starting" />
+      <Choice label="No / a different campus" selected={form.studentStatus === 'other'} onClick={() => update({ studentStatus: 'other', isUofMStudent: false })} testId="choice-student-other" />
+    </div>
+  </QuestionFrame>;
+  if (step === 1) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="2 · Your area" title="Which part of Sage Creek are you near?" subtitle="A nearby street, park or shop is enough. We don’t need your home address." canContinue={canContinue} onBack={goBack} onContinue={next}>
+    <div className="field neighborhood-field"><label htmlFor="neighborhood">{form.livesOutsideSageCreek ? 'Which neighbourhood are you near?' : 'Nearby street, park or shop'}</label><input id="neighborhood" value={form.neighborhood ?? ''} onChange={(event) => update({ neighborhood: event.target.value || null })} placeholder={form.livesOutsideSageCreek ? 'Your neighbourhood' : 'For example, Sage Creek Boulevard'} data-testid="input-neighborhood" /></div>
+    <button type="button" className={`outside-choice ${form.livesOutsideSageCreek ? 'selected' : ''}`} onClick={() => update({ livesOutsideSageCreek: !form.livesOutsideSageCreek, livesInSageCreek: form.livesOutsideSageCreek })} aria-pressed={form.livesOutsideSageCreek} data-testid="choice-outside-sage-creek"><span>I live outside Sage Creek</span><span className="choice-check">{form.livesOutsideSageCreek && <Check size={14} />}</span></button>
+  </QuestionFrame>;
+  if (step === 2) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="3 · Your week" title={form.role === 'driver' ? 'Which days could you take passengers?' : 'Which days do you need rides?'} subtitle="For each day, choose to campus, home from campus, or both." canContinue={canContinue} onBack={goBack} onContinue={next}><ScheduleDirectionEditor schedule={form.schedule} onChange={(schedule) => update({ schedule, weeklyTripCount: weeklyTripCount(schedule) })} /></QuestionFrame>;
+  if (step === 3) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="4 · Your times" title={form.role === 'driver' ? 'What times do you usually travel?' : 'What times do you need rides?'} subtitle={form.role === 'driver' ? 'Enter when you normally arrive on campus and when you leave to go home.' : 'Enter when you need to be on campus and the earliest you can leave to go home.'} canContinue={canContinue} onBack={goBack} onContinue={next}><ScheduleTimesEditor schedule={form.schedule} onChange={(schedule) => update({ schedule, weeklyTripCount: weeklyTripCount(schedule) })} /><p className="field-note">You can make every day different. Use “Copy to other days” only when it really fits.</p></QuestionFrame>;
+  if (step === 4) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="5 · Weekly rhythm" title="Is your schedule usually the same each week?" subtitle="This helps us see whether regular weekly rides would work." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{['Mostly the same', 'Alternates between weeks', 'Changes often'].map((value) => <Choice key={value} label={value} selected={form.scheduleChangeFrequency === value} onClick={() => update({ scheduleChangeFrequency: value })} testId={`choice-rhythm-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div></QuestionFrame>;
+  if (step === 5) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="6 · Flexibility" title="How flexible are your travel times?" subtitle={form.role === 'driver' ? 'Could you move your usual trip a little earlier or later?' : 'Could you arrive earlier or leave later to get a ride?'} canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{['My times are fixed', 'Up to 15 minutes', 'Up to 30 minutes', 'Depends on the day'].map((value) => <Choice key={value} label={value} selected={form.arrivalFlexibility === value} onClick={() => update({ arrivalFlexibility: value, departureFlexibility: value })} testId={`choice-flex-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div>{form.role === 'driver' && <div className="inline-question"><div className="inline-question-title">How much extra driving would you consider for a pickup?</div><div className="choice-grid">{['No extra detour', 'Up to 5 minutes', 'Up to 10 minutes', 'Up to 15 minutes', 'More than 15 minutes'].map((value) => <Choice key={value} label={value} selected={form.maxDetour === value} onClick={() => update({ maxDetour: value })} testId={`choice-detour-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div></div>}<p className="field-note">These are general preferences, not automatic permission to change every trip.</p></QuestionFrame>;
+  if (step === 6 && form.role === 'driver') return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="7 · Driver details" title="How many passengers could you take?" subtitle="Count the spare seats you’d normally be happy to offer." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{['1', '2', '3', '4+'].map((value) => <Choice key={value} label={value} selected={form.seats === value} onClick={() => update({ seats: value })} testId={`choice-seats-${value}`} />)}</div></QuestionFrame>;
+  if (step === 6) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="7 · Rider details" title="How far would you walk to meet your driver?" subtitle="You’d meet at an agreed nearby spot, which might not be your front door." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{['Up to 3 minutes', 'Up to 5 minutes', 'Up to 10 minutes', 'Up to 15 minutes'].map((value) => <Choice key={value} label={value} selected={form.maxPickupWalk === value} onClick={() => update({ maxPickupWalk: value })} testId={`choice-walk-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div></QuestionFrame>;
+  if (step === 7 && form.role === 'driver') {
+    const selected = driverRateOptions.find((option) => option.value === form.driverRateSelection);
+    const monthly = form.driverRateCents == null ? null : Math.round((form.driverRateCents / 100) * weeklyTripCount(form.schedule) * 4.33);
+    return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="8 · Driver economics" title="What’s the least you’d want to earn for one passenger on one trip?" subtitle="One trip means driving to campus OR driving home. Taking someone both ways counts as two paid trips." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{driverRateOptions.map((option) => <Choice key={option.value} label={option.label} selected={form.driverRateSelection === option.value} onClick={() => update({ driverRateSelection: option.value, driverRateCents: option.cents })} testId={`choice-driver-rate-${option.value}`} />)}</div>{selected?.value === 'custom' && <div className="field"><label htmlFor="driver-custom-rate">Custom amount in CAD per passenger per trip</label><input id="driver-custom-rate" type="number" min="0" step="0.01" value={form.driverRateCents == null ? '' : form.driverRateCents / 100} onChange={(event) => update({ driverRateCents: event.target.value === '' ? null : Math.round(Number(event.target.value) * 100) })} data-testid="input-driver-custom-rate" /></div>}{monthly !== null && <p className="economics-callout">At {weeklyTripCount(form.schedule)} trips a week with one passenger, that’s about <strong>${monthly} a month.</strong></p>}<p className="field-note">Example only, assuming one passenger on every selected trip. Actual earnings depend on completed rides.</p></QuestionFrame>;
+  }
+  if (step === 7) {
+    const selected = riderPriceOptions.find((option) => option.value === form.riderPriceSelection);
+    return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="8 · Rider budget" title="What’s the most you’d pay per month for these rides?" subtitle="Choose the highest monthly amount you’d realistically pay for the schedule you selected." canContinue={canContinue} onBack={goBack} onContinue={next}><p className="trip-count-callout">Your selection: <strong>{weeklyTripCount(form.schedule)} one-way rides per week.</strong><span>A trip to campus and a trip home count as two rides.</span></p><div className="choice-grid">{riderPriceOptions.map((option) => <Choice key={option.value} label={option.label} selected={form.riderPriceSelection === option.value} onClick={() => update({ riderPriceSelection: option.value, riderPriceCents: option.cents })} testId={`choice-rider-price-${option.value}`} />)}</div>{selected?.value === 'custom' && <div className="field"><label htmlFor="rider-custom-price">Custom monthly amount in CAD</label><input id="rider-custom-price" type="number" min="0" step="1" value={form.riderPriceCents == null ? '' : form.riderPriceCents / 100} onChange={(event) => update({ riderPriceCents: event.target.value === '' ? null : Math.round(Number(event.target.value) * 100) })} data-testid="input-rider-custom-price" /></div>}<p className="field-note">We’re checking budgets. These aren’t confirmed prices.</p></QuestionFrame>;
+  }
+  if (step === 8) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="9 · Main concern" title="What would worry you most about using this?" subtitle="Choose the main thing that could stop you from joining." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{(form.role === 'driver' ? ['My rider cancelling', 'Extra driving time', 'Riding with someone I don’t know', 'The price', 'Inconvenient times or pickup', 'Nothing major', 'Other'] : ['My driver cancelling', 'Riding with someone I don’t know', 'The price', 'Inconvenient times or pickup', 'Nothing major', 'Other']).map((value) => <Choice key={value} label={value} selected={form.dealbreaker === value} onClick={() => update({ dealbreaker: value, dealbreakerOther: value === 'Other' ? form.dealbreakerOther : null })} testId={`choice-main-concern-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div>{form.dealbreaker === 'Other' && <div className="field"><label htmlFor="main-concern-other">Tell us a little more <span className="optional">optional</span></label><input id="main-concern-other" value={form.dealbreakerOther ?? ''} onChange={(event) => update({ dealbreakerOther: event.target.value || null })} data-testid="input-main-concern-other" /></div>}</QuestionFrame>;
+  if (step === 9) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="10 · Contact" title="How can we contact you if we find a possible match?" subtitle="You can leave your phone number, email, or both. We’ll only use your information for this commute project." canContinue={canContinue} onBack={goBack} onContinue={next}><NewContactFields form={form} update={update} /></QuestionFrame>;
+  return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="11 · One last thought" title="What could stop you from using this?" subtitle="Choose the concern that matters most to you. This helps us improve the idea before launching it." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Submit survey" pending={createResponse.isPending}><div className="choice-grid">{['The price', 'My driver or rider cancelling', 'Safety or trust', 'Pickup location', 'The times would not work', 'I would rather use the bus or drive myself', 'I’m not sure yet', 'Something else'].map((value) => <Choice key={value} label={value} selected={form.finalConcern === value} onClick={() => update({ finalConcern: value, finalConcernOther: value === 'Something else' ? form.finalConcernOther : null })} testId={`choice-final-concern-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div>{form.finalConcern === 'Something else' && <div className="field"><label htmlFor="final-concern-other">Tell us what you have in mind</label><input id="final-concern-other" value={form.finalConcernOther ?? ''} onChange={(event) => update({ finalConcernOther: event.target.value || null })} data-testid="input-final-concern-other" /></div>}{createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}</QuestionFrame>;
+}
+
 function SuccessPage({ response, onBackHome }: { response: ResponseInput; onBackHome: () => void }) {
   const [copied, setCopied] = useState(false);
+  const shareText = 'Hey, I’m helping validate a carpool service for U of M students in Sage Creek. It could help drivers earn money and riders find regular rides. Can you fill out this short survey?';
+  const copyLink = async () => {
+    await navigator.clipboard?.writeText(`${shareText} ${window.location.href}`);
+    setCopied(true);
+  };
   const share = async () => {
-    const shareData = { title: 'Sage Creek Commute', text: 'A more practical way to get from Sage Creek to U of M.', url: window.location.href };
+    const shareData = { title: 'Sage Creek Commute', text: shareText, url: window.location.href };
     try {
       if (navigator.share) await navigator.share(shareData);
-      else { await navigator.clipboard?.writeText(window.location.href); setCopied(true); }
+      else await copyLink();
     } catch {
       // A cancelled native share is not an error state for the experience.
     }
@@ -694,18 +1108,19 @@ function SuccessPage({ response, onBackHome }: { response: ResponseInput; onBack
       <div className="question-top"><div className="question-nav-row"><Link href="/" className="question-brand" data-testid="link-success-brand"><Brand /></Link><span className="eyebrow">All set</span></div><div className="progress-track"><div className="progress-fill" style={{ width: '100%' }} /></div></div>
       <main className="question-main success-main">
         <div className="success-mark"><CheckCircle2 size={34} /></div>
-        <div className="eyebrow">Thanks for making the route clearer</div>
-         <h1 className="question-title mt-5">You’re on the<br /><em>Sage Creek list.</em></h1>
-         <p className="question-subtitle">We’re comparing real Sage Creek commute schedules to see where drivers and riders actually line up. If your commute has compatible matches, we’ll reach out.</p>
-         <div className="success-summary">
-           <div className="eyebrow">Your commute</div>
-           {response.schedule.filter((day) => day.active).map((day) => <div className="summary-line" key={day.day}><span>{day.day.slice(0, 3)}</span><strong>{day.arrival}</strong><span>→</span><strong>{day.departure}</strong></div>)}
-         </div>
-         <p className="share-prompt">Know another U of M student in Sage Creek?</p>
-        <div className="success-actions">
-           <button className="btn-primary" onClick={share} data-testid="button-share-commute">{copied ? 'Link copied' : 'Share with a Sage Creek commuter'} {copied ? <Check size={16} /> : <Clipboard size={16} />}</button>
-           <Link href="/" onClick={onBackHome} className="btn-quiet" data-testid="link-success-home">Back to Sage Creek Commute</Link>
+        <div className="eyebrow">Survey complete</div>
+        <h1 className="question-title mt-5">Thanks — your answers will help us see which commutes could work.</h1>
+        {response.contactPermission && <p className="question-subtitle">We’ll contact you if we find a possible match.</p>}
+        <div className="share-card">
+          <div className="eyebrow">Pass it along</div>
+          <h2>Know another U of M student in Sage Creek?</h2>
+          <p>More drivers and riders give everyone a better chance of finding a commute that works.</p>
+          <div className="success-actions">
+            <button className="btn-primary" onClick={share} data-testid="button-share-commute">Share this survey <ExternalLink size={16} /></button>
+            <button className="btn-quiet" onClick={copyLink} data-testid="button-copy-survey-link">{copied ? 'Link copied' : 'Copy link'} {copied ? <Check size={16} /> : <Clipboard size={16} />}</button>
+          </div>
         </div>
+        <Link href="/" onClick={onBackHome} className="btn-quiet success-home-link" data-testid="link-success-home">Back to Sage Creek Commute</Link>
       </main>
     </div>
   );
@@ -731,7 +1146,7 @@ function RoleSelectionScreen({ onSelect }: { onSelect: (role: Role) => void }) {
 }
 
 function QuestionnaireEntry() {
-  const [role, setRole] = useState<Role | null>(null);
+  const [role, setRole] = useState<Role | null>(() => readStoredRole());
   const [submitted, setSubmitted] = useState<ResponseInput | null>(null);
   const createEvent = useCreateEvent();
   const selectRole = (nextRole: Role) => {
@@ -740,11 +1155,14 @@ function QuestionnaireEntry() {
       nextRole === 'driver' ? EventInputEventName.driver_role_selected : EventInputEventName.rider_role_selected,
       nextRole,
     );
+    window.localStorage.setItem(selectedRoleKey, nextRole);
     setRole(nextRole);
   };
   const backHome = () => {
     setSubmitted(null);
     setRole(null);
+    window.localStorage.removeItem(selectedRoleKey);
+    window.localStorage.removeItem(surveyDraftKey);
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
   if (submitted) return <SuccessPage response={submitted} onBackHome={backHome} />;
@@ -782,8 +1200,13 @@ function ResponseDetails({ response }: { response: AdminResponse }) {
       </summary>
       <div className="response-detail-body">
         <div className="response-detail-grid">
+          <ResponseField label="Survey version" value={response.surveyVersion} />
           <ResponseField label="Lives in Sage Creek" value={response.livesInSageCreek ? 'Yes' : 'No'} />
+          <ResponseField label="Outside Sage Creek flag" value={response.livesOutsideSageCreek ? 'Yes' : 'No'} />
+          {response.neighborhood && <ResponseField label="Neighbourhood" value={response.neighborhood} />}
+          <ResponseField label="Student status" value={response.studentStatus} />
           <ResponseField label="U of M student" value={response.isUofMStudent ? 'Yes' : 'No'} />
+          <ResponseField label="Weekly one-way trips" value={String(response.weeklyTripCount)} />
           <ResponseField label="Ride direction" value={response.rideDirection} />
           <ResponseField label="Arrival flexibility" value={response.arrivalFlexibility} />
           <ResponseField label="Leave flexibility" value={response.departureFlexibility} />
@@ -800,14 +1223,23 @@ function ResponseDetails({ response }: { response: AdminResponse }) {
           {response.role === 'driver' && response.maxDetour && <ResponseField label="Maximum detour" value={response.maxDetour} />}
           {response.role === 'driver' && response.seats && <ResponseField label="Students they would take" value={response.seats} />}
           {response.role === 'driver' && response.minimumMonthlyCompensation && <ResponseField label="Minimum monthly compensation" value={response.minimumMonthlyCompensation} />}
+          {response.role === 'driver' && response.driverRateSelection && <ResponseField label="Driver rate selection" value={response.driverRateSelection} />}
+          {response.role === 'driver' && response.driverRateCents != null && <ResponseField label="Driver rate cents" value={String(response.driverRateCents)} />}
           {response.role === 'rider' && response.maxPickupWalk && <ResponseField label="Maximum pickup walk" value={response.maxPickupWalk} />}
           {response.role === 'rider' && response.currentTransportMethod && <ResponseField label="Current transportation" value={response.currentTransportMethod} />}
           {response.role === 'rider' && response.currentCommuteDuration && <ResponseField label="Usual commute duration" value={response.currentCommuteDuration} />}
           {response.role === 'rider' && response.maximumMonthlyWillingnessToPay && <ResponseField label="Maximum monthly willingness to pay" value={response.maximumMonthlyWillingnessToPay} />}
+          {response.role === 'rider' && response.riderPriceSelection && <ResponseField label="Rider price selection" value={response.riderPriceSelection} />}
+          {response.role === 'rider' && response.riderPriceCents != null && <ResponseField label="Rider price cents" value={String(response.riderPriceCents)} />}
+          {response.finalConcern && <ResponseField label="Final concern" value={response.finalConcern} />}
+          {response.finalConcernOther && <ResponseField label="Final concern details" value={response.finalConcernOther} />}
+          {response.firstName && <ResponseField label="First name" value={response.firstName} />}
+          <ResponseField label="Contact method" value={response.contactMethod ?? 'none'} />
+          <ResponseField label="Contact permission" value={response.contactPermission ? 'Yes' : 'No'} />
         </div>
         <div className="response-schedule">
           <div className="eyebrow">Active commute days</div>
-          {activeDays.length ? activeDays.map((day) => <div className="response-schedule-day" key={day.day}><strong>{day.day.slice(0, 3).toUpperCase()}</strong><span>{day.arrival} → {day.departure}</span></div>) : <p className="empty-admin">No active commute days.</p>}
+           {activeDays.length ? activeDays.map((day) => <div className="response-schedule-day" key={day.day}><strong>{day.day.slice(0, 3).toUpperCase()}</strong><span>{day.directions?.join(' + ') ?? 'legacy'} · {day.arrival} → {day.departure}</span></div>) : <p className="empty-admin">No active commute days.</p>}
         </div>
       </div>
     </details>
@@ -1002,16 +1434,18 @@ function AdminPage() {
 }
 
 function Home() {
-  const [started, setStarted] = useState<Role | null>(null);
+  const [started, setStarted] = useState<Role | null>(() => readStoredRole());
   const [submitted, setSubmitted] = useState<ResponseInput | null>(null);
   const backHome = () => {
     setSubmitted(null);
     setStarted(null);
+    window.localStorage.removeItem(selectedRoleKey);
+    window.localStorage.removeItem(surveyDraftKey);
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
   if (submitted) return <SuccessPage response={submitted} onBackHome={backHome} />;
-  if (started) return <Questionnaire initialRole={started} onComplete={(response) => setSubmitted(response)} onExit={() => setStarted(null)} />;
-  return <LandingPage onStart={(role) => setStarted(role)} />;
+  if (started) return <Questionnaire initialRole={started} onComplete={(response) => setSubmitted(response)} onExit={() => { setStarted(null); window.localStorage.removeItem(selectedRoleKey); window.localStorage.removeItem(surveyDraftKey); }} />;
+  return <LandingPage onStart={(role) => { window.localStorage.setItem(selectedRoleKey, role); setStarted(role); }} />;
 }
 
 function Router() {

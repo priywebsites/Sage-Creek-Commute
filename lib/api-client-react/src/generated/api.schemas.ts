@@ -58,6 +58,14 @@ export const ScheduleDayInputDay = {
   friday: 'friday',
 } as const;
 
+export type ScheduleDayInputDirectionsItem = typeof ScheduleDayInputDirectionsItem[keyof typeof ScheduleDayInputDirectionsItem];
+
+
+export const ScheduleDayInputDirectionsItem = {
+  to_campus: 'to_campus',
+  from_campus: 'from_campus',
+} as const;
+
 export interface ScheduleDayInput {
   day: ScheduleDayInputDay;
   active: boolean;
@@ -65,6 +73,7 @@ export interface ScheduleDayInput {
   arrival: string;
   /** @minLength 1 */
   departure: string;
+  directions?: ScheduleDayInputDirectionsItem[];
 }
 
 export type ResponseInputRole = typeof ResponseInputRole[keyof typeof ResponseInputRole];
@@ -75,15 +84,50 @@ export const ResponseInputRole = {
   rider: 'rider',
 } as const;
 
+export type ResponseInputSurveyVersion = typeof ResponseInputSurveyVersion[keyof typeof ResponseInputSurveyVersion];
+
+
+export const ResponseInputSurveyVersion = {
+  v1: 'v1',
+  v2: 'v2',
+} as const;
+
+export type ResponseInputStudentStatus = typeof ResponseInputStudentStatus[keyof typeof ResponseInputStudentStatus];
+
+
+export const ResponseInputStudentStatus = {
+  fort_garry: 'fort_garry',
+  starting_fort_garry: 'starting_fort_garry',
+  other: 'other',
+  legacy: 'legacy',
+} as const;
+
+export type ResponseInputContactMethod = typeof ResponseInputContactMethod[keyof typeof ResponseInputContactMethod];
+
+
+export const ResponseInputContactMethod = {
+  phone: 'phone',
+  email: 'email',
+  both: 'both',
+  none: 'none',
+} as const;
+
 export interface ResponseInput {
   role: ResponseInputRole;
+  surveyVersion: ResponseInputSurveyVersion;
   posterSource: PosterSource;
   /** @minLength 1 */
   submissionId: string;
   livesInSageCreek: boolean;
+  livesOutsideSageCreek: boolean;
+  /** @nullable */
+  neighborhood: string | null;
+  studentStatus: ResponseInputStudentStatus;
   isUofMStudent: boolean;
   /** @minItems 1 */
   schedule: ScheduleDayInput[];
+  /** @minimum 0 */
+  weeklyTripCount: number;
   /** @minLength 1 */
   arrivalFlexibility: string;
   /** @minLength 1 */
@@ -104,18 +148,40 @@ export interface ResponseInput {
   minimumMonthlyCompensation?: string | null;
   /** @nullable */
   maximumMonthlyWillingnessToPay?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  driverRateCents?: number | null;
+  /** @nullable */
+  driverRateSelection?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  riderPriceCents?: number | null;
+  /** @nullable */
+  riderPriceSelection?: string | null;
   /** @minLength 1 */
   scheduleChangeFrequency: string;
   /** @minLength 1 */
   dealbreaker: string;
   /** @nullable */
   dealbreakerOther?: string | null;
+  /** @nullable */
+  finalConcern?: string | null;
+  /** @nullable */
+  finalConcernOther?: string | null;
   /** @minLength 1 */
   intentLevel: string;
+  /** @nullable */
+  firstName?: string | null;
   /** @nullable */
   email: string | null;
   /** @nullable */
   phone: string | null;
+  contactMethod?: ResponseInputContactMethod;
+  contactPermission?: boolean;
   prefersText: boolean;
   /** @nullable */
   utmSource?: string | null;

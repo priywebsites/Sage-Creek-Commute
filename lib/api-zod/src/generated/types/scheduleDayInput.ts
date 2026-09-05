@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ScheduleDayInputDay } from './scheduleDayInputDay';
+import type { ScheduleDayInputDirectionsItem } from './scheduleDayInputDirectionsItem';
 
 export interface ScheduleDayInput {
   day: ScheduleDayInputDay;
@@ -14,4 +15,5 @@ export interface ScheduleDayInput {
   arrival: string;
   /** @minLength 1 */
   departure: string;
+  directions?: ScheduleDayInputDirectionsItem[];
 }

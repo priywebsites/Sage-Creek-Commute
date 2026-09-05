@@ -28,6 +28,7 @@ type ScheduleDay = {
   active: boolean;
   arrival: string;
   departure: string;
+  directions?: ("to_campus" | "from_campus")[];
 };
 
 type ResponseData = ReturnType<typeof normalizeResponse>;
@@ -37,11 +38,18 @@ function normalizeResponse(row: typeof commuteResponsesTable.$inferSelect) {
     id: row.id,
     createdAt: row.createdAt,
     role: row.role as "driver" | "rider",
+    surveyVersion: row.surveyVersion === "v2" ? "v2" : "v1",
     posterSource: (row.posterSource ?? "direct_unknown") as PosterSource,
     submissionId: row.submissionId ?? `legacy-${row.id}`,
     livesInSageCreek: row.livesInSageCreek,
+    livesOutsideSageCreek: row.livesOutsideSageCreek,
+    neighborhood: row.neighborhood,
+    studentStatus: ["fort_garry", "starting_fort_garry", "other"].includes(row.studentStatus)
+      ? row.studentStatus as "fort_garry" | "starting_fort_garry" | "other"
+      : "legacy",
     isUofMStudent: row.isUofMStudent,
     schedule: row.schedule as ScheduleDay[],
+    weeklyTripCount: row.weeklyTripCount ?? 0,
     arrivalFlexibility: row.arrivalFlexibility,
     departureFlexibility: row.departureFlexibility,
     rideDirection: row.rideDirection,
@@ -52,12 +60,23 @@ function normalizeResponse(row: typeof commuteResponsesTable.$inferSelect) {
     currentCommuteDuration: row.currentCommuteDuration,
     minimumMonthlyCompensation: row.minimumMonthlyCompensation,
     maximumMonthlyWillingnessToPay: row.maximumMonthlyWillingnessToPay,
+    driverRateCents: row.driverRateCents,
+    driverRateSelection: row.driverRateSelection,
+    riderPriceCents: row.riderPriceCents,
+    riderPriceSelection: row.riderPriceSelection,
     scheduleChangeFrequency: row.scheduleChangeFrequency,
     dealbreaker: row.dealbreaker,
     dealbreakerOther: row.dealbreakerOther,
+    finalConcern: row.finalConcern,
+    finalConcernOther: row.finalConcernOther,
     intentLevel: row.intentLevel,
+    firstName: row.firstName,
     email: row.email,
     phone: row.phone,
+    contactMethod: ["phone", "email", "both"].includes(row.contactMethod)
+      ? row.contactMethod as "phone" | "email" | "both"
+      : "none",
+    contactPermission: row.contactPermission,
     prefersText: row.prefersText,
     utmSource: row.utmSource,
     utmMedium: row.utmMedium,
@@ -110,8 +129,9 @@ function validSchedule(schedule: ScheduleDay[]): boolean {
   }
   return schedule.every((day) => {
     if (!day.active) return true;
-    const arrival = parseTime(day.arrival);
-    const departure = parseTime(day.departure);
+    const directions = day.directions?.length ? day.directions : ["to_campus", "from_campus"];
+    const arrival = directions.includes("to_campus") ? parseTime(day.arrival) : -1;
+    const departure = directions.includes("from_campus") ? parseTime(day.departure) : -1;
     return (
       arrival !== null &&
       departure !== null &&
@@ -129,6 +149,21 @@ function validateContact(email: string | null, phone: string | null): boolean {
   const validEmail = nonBlank(email) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
   const validPhone = nonBlank(phone) && phone.replace(/\D/g, "").length >= 7;
   return Boolean(validEmail || validPhone);
+}
+
+function validateContactMethod(
+  method: "phone" | "email" | "both" | "none" | undefined,
+  email: string | null,
+  phone: string | null,
+): boolean {
+  if (method === "none") return !email && !phone;
+  if (method === "phone") return nonBlank(phone) && phone.replace(/\D/g, "").length >= 7;
+  if (method === "email") return nonBlank(email) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  if (method === "both") {
+    return nonBlank(phone) && phone.replace(/\D/g, "").length >= 7 &&
+      nonBlank(email) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  }
+  return validateContact(email, phone);
 }
 
 function requireAdmin(req: Request, res: Response): boolean {
@@ -188,24 +223,29 @@ function buildSummary(inputRows: ResponseData[]): AdminSummary {
   const overlap = new Map<string, { day: string; time: string; drivers: number; riders: number }>();
   rows.forEach((row) => {
     uniqueScheduleEntries(row)
-      .filter((entry) => entry.active && entry.arrival !== "Varies")
+      .filter((entry) => entry.active)
       .forEach((entry) => {
-        const key = `${entry.day}|${entry.arrival}`;
-        const bucket = overlap.get(key) ?? {
-          day: entry.day,
-          time: entry.arrival,
-          drivers: 0,
-          riders: 0,
-        };
-        bucket[row.role === "driver" ? "drivers" : "riders"] += 1;
-        overlap.set(key, bucket);
+        const directions = entry.directions?.length ? entry.directions : ["to_campus", "from_campus"];
+        directions.forEach((direction) => {
+          const time = direction === "to_campus" ? entry.arrival : entry.departure;
+          if (time === "Varies") return;
+          const key = `${entry.day}|${direction}|${time}`;
+          const bucket = overlap.get(key) ?? {
+            day: `${entry.day} · ${direction === "to_campus" ? "to campus" : "home"}`,
+            time,
+            drivers: 0,
+            riders: 0,
+          };
+          bucket[row.role === "driver" ? "drivers" : "riders"] += 1;
+          overlap.set(key, bucket);
+        });
       });
   });
   const interested = (role: "driver" | "rider") =>
     rows.filter(
       (row) =>
         row.role === role &&
-        (row.intentLevel === "Definitely" || row.intentLevel === "Probably"),
+        (row.surveyVersion === "v2" || row.intentLevel === "Definitely" || row.intentLevel === "Probably"),
     ).length;
   return {
     total: rows.length,
@@ -305,6 +345,7 @@ function csvCell(value: unknown): string {
 
 const scheduleCsvHeaders = weekdays.flatMap((day) => [
   `${day}_active`,
+  `${day}_directions`,
   `${day}_arrival`,
   `${day}_leave`,
 ]);
@@ -314,6 +355,7 @@ function csvValue(row: ResponseData, header: string): unknown {
   if (scheduleDay) {
     const entry = row.schedule.find((item) => item.day === scheduleDay);
     if (header.endsWith("_active")) return entry?.active ?? false;
+    if (header.endsWith("_directions")) return entry?.directions ?? [];
     if (header.endsWith("_arrival")) return entry?.arrival ?? "";
     return entry?.departure ?? "";
   }
@@ -328,27 +370,43 @@ router.post("/responses", async (req, res): Promise<void> => {
     return;
   }
   const data = parsed.data;
-  if (!data.livesInSageCreek || !data.isUofMStudent) {
-    res.status(400).json({ error: "This list is currently for Sage Creek U of M students." });
+  if (data.surveyVersion !== "v2") {
+    res.status(400).json({ error: "This questionnaire version is no longer accepting new responses." });
+    return;
+  }
+  if (!data.isUofMStudent) {
+    res.status(400).json({ error: "This list is currently for U of M students at the Fort Garry campus." });
+    return;
+  }
+  if (!data.livesInSageCreek && !data.livesOutsideSageCreek) {
+    res.status(400).json({ error: "Please tell us whether you are near Sage Creek or outside it." });
+    return;
+  }
+  if (data.livesOutsideSageCreek && !nonBlank(data.neighborhood)) {
+    res.status(400).json({ error: "Add your neighbourhood so we can flag this response correctly." });
     return;
   }
   if (!validSchedule(data.schedule as ScheduleDay[])) {
     res.status(400).json({ error: "Please review the weekday schedule and time ranges." });
     return;
   }
-  if (!validateContact(data.email, data.phone)) {
-    res.status(400).json({ error: "Add an email, phone number, or both to join the list." });
+  const normalizedSchedule = data.schedule as ScheduleDay[];
+  const normalizedTripCount = normalizedSchedule.reduce((total, day) => {
+    if (!day.active) return total;
+    const directions = day.directions?.length ? day.directions : ["to_campus", "from_campus"];
+    return total + directions.length;
+  }, 0);
+  if (!validateContactMethod(data.contactMethod, data.email, data.phone)) {
+    res.status(400).json({ error: "Check the contact option and details before continuing." });
     return;
   }
   const roleFieldsValid =
     data.role === "driver"
       ? nonBlank(data.maxDetour) &&
         nonBlank(data.seats) &&
-        nonBlank(data.minimumMonthlyCompensation)
+        nonBlank(data.driverRateSelection)
       : nonBlank(data.maxPickupWalk) &&
-        nonBlank(data.currentTransportMethod) &&
-        nonBlank(data.currentCommuteDuration) &&
-        nonBlank(data.maximumMonthlyWillingnessToPay);
+        nonBlank(data.riderPriceSelection);
   if (!roleFieldsValid) {
     res.status(400).json({ error: "Please complete the questions for your commute type." });
     return;
@@ -368,7 +426,8 @@ router.post("/responses", async (req, res): Promise<void> => {
     .insert(commuteResponsesTable)
     .values({
       ...data,
-      schedule: data.schedule,
+      schedule: normalizedSchedule,
+      weeklyTripCount: normalizedTripCount,
     })
     .onConflictDoNothing({ target: commuteResponsesTable.submissionId })
     .returning({ id: commuteResponsesTable.id, createdAt: commuteResponsesTable.createdAt });
@@ -454,13 +513,16 @@ router.get("/admin/export.csv", async (req, res): Promise<void> => {
       .map(normalizeResponse),
   );
   const headers = [
-    "id", "createdAt", "role", "posterSource", "submissionId", "livesInSageCreek", "isUofMStudent",
+    "id", "createdAt", "role", "surveyVersion", "posterSource", "submissionId", "livesInSageCreek",
+    "livesOutsideSageCreek", "neighborhood", "studentStatus", "isUofMStudent", "weeklyTripCount",
     ...scheduleCsvHeaders,
     "arrivalFlexibility", "departureFlexibility", "rideDirection", "maxDetour",
     "seats", "maxPickupWalk", "currentTransportMethod", "currentCommuteDuration",
     "minimumMonthlyCompensation", "maximumMonthlyWillingnessToPay",
-    "scheduleChangeFrequency", "dealbreaker", "dealbreakerOther", "intentLevel",
-    "email", "phone", "prefersText", "utmSource", "utmMedium", "utmCampaign", "referrer",
+    "driverRateCents", "driverRateSelection", "riderPriceCents", "riderPriceSelection",
+    "scheduleChangeFrequency", "dealbreaker", "dealbreakerOther", "finalConcern", "finalConcernOther",
+    "intentLevel", "firstName", "email", "phone", "contactMethod", "contactPermission", "prefersText",
+    "utmSource", "utmMedium", "utmCampaign", "referrer",
   ];
   const csv = [
     headers.join(","),

@@ -24,8 +24,14 @@ export const HealthCheckResponse = zod.object({
 
 
 
+export const createResponseBodyWeeklyTripCountMin = 0;
 
 
+
+
+export const createResponseBodyDriverRateCentsMin = 0;
+
+export const createResponseBodyRiderPriceCentsMin = 0;
 
 
 
@@ -34,16 +40,22 @@ export const HealthCheckResponse = zod.object({
 
 export const CreateResponseBody = zod.object({
   "role": zod.enum(['driver', 'rider']),
+  "surveyVersion": zod.enum(['v1', 'v2']),
   "posterSource": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
   "submissionId": zod.string().min(1),
   "livesInSageCreek": zod.boolean(),
+  "livesOutsideSageCreek": zod.boolean(),
+  "neighborhood": zod.string().nullable(),
+  "studentStatus": zod.enum(['fort_garry', 'starting_fort_garry', 'other', 'legacy']),
   "isUofMStudent": zod.boolean(),
   "schedule": zod.array(zod.object({
   "day": zod.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
   "active": zod.boolean(),
   "arrival": zod.string().min(1),
-  "departure": zod.string().min(1)
+  "departure": zod.string().min(1),
+  "directions": zod.array(zod.enum(['to_campus', 'from_campus'])).optional()
 })).min(1),
+  "weeklyTripCount": zod.number().min(createResponseBodyWeeklyTripCountMin),
   "arrivalFlexibility": zod.string().min(1),
   "departureFlexibility": zod.string().min(1),
   "rideDirection": zod.string().min(1),
@@ -54,12 +66,21 @@ export const CreateResponseBody = zod.object({
   "currentCommuteDuration": zod.string().nullish(),
   "minimumMonthlyCompensation": zod.string().nullish(),
   "maximumMonthlyWillingnessToPay": zod.string().nullish(),
+  "driverRateCents": zod.number().min(createResponseBodyDriverRateCentsMin).nullish(),
+  "driverRateSelection": zod.string().nullish(),
+  "riderPriceCents": zod.number().min(createResponseBodyRiderPriceCentsMin).nullish(),
+  "riderPriceSelection": zod.string().nullish(),
   "scheduleChangeFrequency": zod.string().min(1),
   "dealbreaker": zod.string().min(1),
   "dealbreakerOther": zod.string().nullish(),
+  "finalConcern": zod.string().nullish(),
+  "finalConcernOther": zod.string().nullish(),
   "intentLevel": zod.string().min(1),
+  "firstName": zod.string().nullish(),
   "email": zod.string().nullable(),
   "phone": zod.string().nullable(),
+  "contactMethod": zod.enum(['phone', 'email', 'both', 'none']).optional(),
+  "contactPermission": zod.boolean().optional(),
   "prefersText": zod.boolean(),
   "utmSource": zod.string().nullish(),
   "utmMedium": zod.string().nullish(),
@@ -190,8 +211,14 @@ export const GetAdminResponsesHeader = zod.object({
 
 
 
+export const getAdminResponsesResponseOneWeeklyTripCountMin = 0;
 
 
+
+
+export const getAdminResponsesResponseOneDriverRateCentsMin = 0;
+
+export const getAdminResponsesResponseOneRiderPriceCentsMin = 0;
 
 
 
@@ -200,16 +227,22 @@ export const GetAdminResponsesHeader = zod.object({
 
 export const GetAdminResponsesResponseItem = zod.object({
   "role": zod.enum(['driver', 'rider']),
+  "surveyVersion": zod.enum(['v1', 'v2']),
   "posterSource": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
   "submissionId": zod.string().min(1),
   "livesInSageCreek": zod.boolean(),
+  "livesOutsideSageCreek": zod.boolean(),
+  "neighborhood": zod.string().nullable(),
+  "studentStatus": zod.enum(['fort_garry', 'starting_fort_garry', 'other', 'legacy']),
   "isUofMStudent": zod.boolean(),
   "schedule": zod.array(zod.object({
   "day": zod.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
   "active": zod.boolean(),
   "arrival": zod.string().min(1),
-  "departure": zod.string().min(1)
+  "departure": zod.string().min(1),
+  "directions": zod.array(zod.enum(['to_campus', 'from_campus'])).optional()
 })).min(1),
+  "weeklyTripCount": zod.number().min(getAdminResponsesResponseOneWeeklyTripCountMin),
   "arrivalFlexibility": zod.string().min(1),
   "departureFlexibility": zod.string().min(1),
   "rideDirection": zod.string().min(1),
@@ -220,12 +253,21 @@ export const GetAdminResponsesResponseItem = zod.object({
   "currentCommuteDuration": zod.string().nullish(),
   "minimumMonthlyCompensation": zod.string().nullish(),
   "maximumMonthlyWillingnessToPay": zod.string().nullish(),
+  "driverRateCents": zod.number().min(getAdminResponsesResponseOneDriverRateCentsMin).nullish(),
+  "driverRateSelection": zod.string().nullish(),
+  "riderPriceCents": zod.number().min(getAdminResponsesResponseOneRiderPriceCentsMin).nullish(),
+  "riderPriceSelection": zod.string().nullish(),
   "scheduleChangeFrequency": zod.string().min(1),
   "dealbreaker": zod.string().min(1),
   "dealbreakerOther": zod.string().nullish(),
+  "finalConcern": zod.string().nullish(),
+  "finalConcernOther": zod.string().nullish(),
   "intentLevel": zod.string().min(1),
+  "firstName": zod.string().nullish(),
   "email": zod.string().nullable(),
   "phone": zod.string().nullable(),
+  "contactMethod": zod.enum(['phone', 'email', 'both', 'none']).optional(),
+  "contactPermission": zod.boolean().optional(),
   "prefersText": zod.boolean(),
   "utmSource": zod.string().nullish(),
   "utmMedium": zod.string().nullish(),
