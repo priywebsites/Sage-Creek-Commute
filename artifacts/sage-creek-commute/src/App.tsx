@@ -57,6 +57,7 @@ const anonymousVisitorKey = 'sage_creek_commute_anonymous_visitor';
 const browserSessionKey = 'sage_creek_commute_browser_session';
 const selectedRoleKey = 'sage_creek_commute_selected_role_v2';
 const surveyDraftKey = 'sage_creek_commute_survey_draft_v2';
+const canonicalSurveyUrl = 'https://sagecreek-commutes.replit.app/questionnaire';
 
 const days: Array<{ key: DayName; label: string }> = [
   { key: 'monday', label: 'Mon' },
@@ -143,7 +144,9 @@ function readStoredDraft(role: Role): { step: number; form: ResponseInput } | nu
   if (typeof window === 'undefined') return null;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(surveyDraftKey) ?? 'null');
-    return parsed?.role === role && parsed?.form ? { step: Math.min(Math.max(Number(parsed.step) || 0, 0), 10), form: parsed.form as ResponseInput } : null;
+    return parsed?.role === role && parsed?.form
+      ? { step: Math.min(Math.max(Number(parsed.step) || 0, 0), 9), form: parsed.form as ResponseInput }
+      : null;
   } catch {
     return null;
   }
@@ -365,7 +368,7 @@ function RoleChoiceButtons({ onSelect, testPrefix }: { onSelect: (role: Role) =>
 
 function Feature({ number, title, body }: { number: string; title: string; body: string }) {
   return (
-    <article className="feature-item">
+    <article className="feature-item how-step-card">
       <span className="feature-number">{number}</span>
       <div><h3>{title}</h3><p>{body}</p></div>
     </article>
@@ -825,7 +828,7 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
 }
 
 function scheduleDirections(entry: ResponseInput['schedule'][number]): Direction[] {
-  return entry.directions?.length ? entry.directions : entry.active ? ['to_campus', 'from_campus'] : [];
+  return entry.directions ?? [];
 }
 
 function weeklyTripCount(schedule: ResponseInput['schedule']): number {
@@ -970,12 +973,12 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   const submitGuard = useRef(false);
   const createResponse = useCreateResponse();
   const createEvent = useCreateEvent();
-  const total = 11;
+  const total = 10;
   const update = (patch: Partial<ResponseInput>) => setForm((previous) => ({ ...previous, ...patch }));
   useEffect(() => {
     if (typeof window === 'undefined' || exitKind) return;
     window.localStorage.setItem(selectedRoleKey, initialRole);
-    window.localStorage.setItem(surveyDraftKey, JSON.stringify({ role: initialRole, step, form }));
+    window.localStorage.setItem(surveyDraftKey, JSON.stringify({ flowVersion: 'v2-10', role: initialRole, step, form }));
   }, [exitKind, form, initialRole, step]);
   const reset = () => {
     window.localStorage.removeItem(surveyDraftKey);
@@ -1009,9 +1012,8 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
       if (form.role === 'driver') return Boolean(form.driverRateSelection && (form.driverRateSelection !== 'custom' || form.driverRateCents !== null));
       return Boolean(form.riderPriceSelection && (form.riderPriceSelection !== 'custom' || form.riderPriceCents !== null));
     }
-    if (step === 8) return Boolean(form.dealbreaker && (form.dealbreaker !== 'Other' || form.dealbreakerOther?.trim()));
+    if (step === 8) return Boolean(form.finalConcern && (form.finalConcern !== 'Something else' || form.finalConcernOther?.trim()));
     if (step === 9) return contactFormValid(form);
-    if (step === 10) return form.finalConcern !== 'Something else' || Boolean(form.finalConcernOther?.trim());
     return true;
   }, [form, scheduleReady, step, timesReady]);
   const next = () => {
@@ -1025,6 +1027,8 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
         isUofMStudent: form.studentStatus !== 'other',
         livesInSageCreek: !form.livesOutsideSageCreek,
         weeklyTripCount: weeklyTripCount(form.schedule),
+        dealbreaker: form.finalConcern ?? 'Not specified',
+        dealbreakerOther: form.finalConcernOther,
         minimumMonthlyCompensation: form.role === 'driver' && form.driverRateSelection ? (driverRateOptions.find((option) => option.value === form.driverRateSelection)?.label ?? 'Custom') : null,
         maximumMonthlyWillingnessToPay: form.role === 'rider' && form.riderPriceSelection ? (riderPriceOptions.find((option) => option.value === form.riderPriceSelection)?.label ?? 'Custom') : null,
         prefersText: form.contactMethod === 'phone' || form.contactMethod === 'both',
@@ -1040,7 +1044,7 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
         },
         onError: () => { submitGuard.current = false; },
       });
-      trackEvent(createEvent.mutate, EventInputEventName.form_completed, form.role, 11);
+      trackEvent(createEvent.mutate, EventInputEventName.form_completed, form.role, total);
       return;
     }
     setStep((current) => current + 1);
@@ -1082,23 +1086,25 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     const selected = riderPriceOptions.find((option) => option.value === form.riderPriceSelection);
     return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="8 · Rider budget" title="What’s the most you’d pay per month for these rides?" subtitle="Choose the highest monthly amount you’d realistically pay for the schedule you selected." canContinue={canContinue} onBack={goBack} onContinue={next}><p className="trip-count-callout">Your selection: <strong>{weeklyTripCount(form.schedule)} one-way rides per week.</strong><span>A trip to campus and a trip home count as two rides.</span></p><div className="choice-grid">{riderPriceOptions.map((option) => <Choice key={option.value} label={option.label} selected={form.riderPriceSelection === option.value} onClick={() => update({ riderPriceSelection: option.value, riderPriceCents: option.cents })} testId={`choice-rider-price-${option.value}`} />)}</div>{selected?.value === 'custom' && <div className="field"><label htmlFor="rider-custom-price">Custom monthly amount in CAD</label><input id="rider-custom-price" type="number" min="0" step="1" value={form.riderPriceCents == null ? '' : form.riderPriceCents / 100} onChange={(event) => update({ riderPriceCents: event.target.value === '' ? null : Math.round(Number(event.target.value) * 100) })} data-testid="input-rider-custom-price" /></div>}<p className="field-note">We’re checking budgets. These aren’t confirmed prices.</p></QuestionFrame>;
   }
-  if (step === 8) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="9 · Main concern" title="What would worry you most about using this?" subtitle="Choose the main thing that could stop you from joining." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{(form.role === 'driver' ? ['My rider cancelling', 'Extra driving time', 'Riding with someone I don’t know', 'The price', 'Inconvenient times or pickup', 'Nothing major', 'Other'] : ['My driver cancelling', 'Riding with someone I don’t know', 'The price', 'Inconvenient times or pickup', 'Nothing major', 'Other']).map((value) => <Choice key={value} label={value} selected={form.dealbreaker === value} onClick={() => update({ dealbreaker: value, dealbreakerOther: value === 'Other' ? form.dealbreakerOther : null })} testId={`choice-main-concern-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div>{form.dealbreaker === 'Other' && <div className="field"><label htmlFor="main-concern-other">Tell us a little more <span className="optional">optional</span></label><input id="main-concern-other" value={form.dealbreakerOther ?? ''} onChange={(event) => update({ dealbreakerOther: event.target.value || null })} data-testid="input-main-concern-other" /></div>}</QuestionFrame>;
-  if (step === 9) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="10 · Contact" title="How can we contact you if we find a possible match?" subtitle="You can leave your phone number, email, or both. We’ll only use your information for this commute project." canContinue={canContinue} onBack={goBack} onContinue={next}><NewContactFields form={form} update={update} /></QuestionFrame>;
-  return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="11 · One last thought" title="What could stop you from using this?" subtitle="Choose the concern that matters most to you. This helps us improve the idea before launching it." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Submit survey" pending={createResponse.isPending}><div className="choice-grid">{['The price', 'My driver or rider cancelling', 'Safety or trust', 'Pickup location', 'The times would not work', 'I would rather use the bus or drive myself', 'I’m not sure yet', 'Something else'].map((value) => <Choice key={value} label={value} selected={form.finalConcern === value} onClick={() => update({ finalConcern: value, finalConcernOther: value === 'Something else' ? form.finalConcernOther : null })} testId={`choice-final-concern-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div>{form.finalConcern === 'Something else' && <div className="field"><label htmlFor="final-concern-other">Tell us what you have in mind</label><input id="final-concern-other" value={form.finalConcernOther ?? ''} onChange={(event) => update({ finalConcernOther: event.target.value || null })} data-testid="input-final-concern-other" /></div>}{createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}</QuestionFrame>;
+  if (step === 8) return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="9 · Main concern" title="What could stop you from using this?" subtitle="Choose the concern that matters most to you. This helps us improve the idea." canContinue={canContinue} onBack={goBack} onContinue={next}><div className="choice-grid">{['The price', 'My driver or rider cancelling', 'Safety or trust', 'Pickup location', 'The times would not work', 'I would rather use the bus or drive myself', 'I’m not sure yet', 'Something else'].map((value) => <Choice key={value} label={value} selected={form.finalConcern === value} onClick={() => update({ finalConcern: value, finalConcernOther: value === 'Something else' ? form.finalConcernOther : null })} testId={`choice-final-concern-${value.replace(/\W/g, '-').toLowerCase()}`} />)}</div>{form.finalConcern === 'Something else' && <div className="field"><label htmlFor="final-concern-other">Tell us what you have in mind</label><input id="final-concern-other" value={form.finalConcernOther ?? ''} onChange={(event) => update({ finalConcernOther: event.target.value || null })} data-testid="input-final-concern-other" /></div>}</QuestionFrame>;
+  return <QuestionFrame {...frameRoleProps} step={step} total={total} kicker="10 · Contact" title="How can we contact you if we find a possible match?" subtitle="You can leave your phone number, email, or both. We’ll only use your information for this commute project." canContinue={canContinue} onBack={goBack} onContinue={next} continueLabel="Submit survey" pending={createResponse.isPending}><NewContactFields form={form} update={update} />{createResponse.isError && <p className="field-error submit-error">We could not save that just now. Check your connection and try again.</p>}</QuestionFrame>;
 }
 
 function SuccessPage({ response, onBackHome }: { response: ResponseInput; onBackHome: () => void }) {
   const [copied, setCopied] = useState(false);
   const shareText = 'Hey, I’m helping validate a carpool service for U of M students in Sage Creek. It could help drivers earn money and riders find regular rides. Can you fill out this short survey?';
   const copyLink = async () => {
-    await navigator.clipboard?.writeText(`${shareText} ${window.location.href}`);
+    await navigator.clipboard?.writeText(canonicalSurveyUrl);
     setCopied(true);
   };
   const share = async () => {
-    const shareData = { title: 'Sage Creek Commute', text: shareText, url: window.location.href };
+    const shareData = { title: 'Sage Creek Commute', text: shareText, url: canonicalSurveyUrl };
     try {
       if (navigator.share) await navigator.share(shareData);
-      else await copyLink();
+      else {
+        await navigator.clipboard?.writeText(`${shareText} ${canonicalSurveyUrl}`);
+        setCopied(true);
+      }
     } catch {
       // A cancelled native share is not an error state for the experience.
     }
