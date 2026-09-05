@@ -1,0 +1,42 @@
+Add independent attribution for three physical survey posters to the existing Sage Creek Commute survey.
+
+Use these permanent poster IDs and URLs:
+
+* P01: https://sagecreek-commutes.replit.app/?source=P01
+* P02: https://sagecreek-commutes.replit.app/?source=P02
+* P03: https://sagecreek-commutes.replit.app/?source=P03
+
+Keep the existing survey flow and design.
+
+Tracking:
+
+1. Read and validate the source query parameter on entry. Allow P01, P02 and P03.
+2. Persist poster attribution through the survey and page reloads. A later explicit valid poster link updates attribution for subsequent activity; direct visits should not erase saved attribution.
+3. Store attribution in the existing backend database on each completed survey response. Responses without known attribution should be categorized as Direct/Unknown.
+4. Track landing visits and survey starts server-side, deduplicating each event per poster per browser session. Prevent duplicate completion counts from retries or double-clicking.
+5. Call the metric “QR landing visits,” not “scans”—we can measure page loads, not camera scans. Explain that unique visitors are estimated using an anonymous browser identifier, not verified people.
+6. Keep analytics failures from blocking survey submission.
+
+In the existing protected admin dashboard, show each poster’s:
+
+* QR landing visits
+* Estimated unique visitors
+* Survey starts
+* Completed surveys
+* Completion rate: completed surveys divided by landing visits, with safe handling of zero visits
+
+Include a date filter and a separate Direct/Unknown category. Use the same attribution consistently across visits, starts and completions.
+
+Create a poster registry with editable location name, latitude and longitude. Leave locations and coordinates blank until I provide my final pins; do not guess them.
+
+Generate three actual scannable vector QR files using a QR-code library:
+
+* poster-01.svg encodes the P01 URL
+* poster-02.svg encodes the P02 URL
+* poster-03.svg encodes the P03 URL
+
+Use black modules on white, a minimum four-module quiet zone, and no logo. Add a small human-readable P01, P02 or P03 label beneath the QR, outside the quiet zone. Provide download links in the protected admin dashboard.
+
+Verify that all three SVGs decode to the correct URLs. Test that each poster records its own visits and survey completions, attribution survives a reload, and duplicate submission requests do not inflate results. Keep test data out of production analytics.
+
+Report what changed and whether deployment is still required before the printed codes will track correctly.
