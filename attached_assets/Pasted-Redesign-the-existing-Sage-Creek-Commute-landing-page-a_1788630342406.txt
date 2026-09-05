@@ -1,0 +1,380 @@
+Redesign the existing Sage Creek Commute landing page and simplify its survey. Implement these changes in the existing project.
+
+This is the complete revised brief and replaces my earlier landing-page and survey instructions. Start after the source-tracking work is finished.
+
+FIRST: PRESERVE EXISTING WORK
+
+Inspect the current page, survey, database and admin dashboard before editing.
+
+Preserve:
+
+* Existing survey responses.
+* P01/P02/P03 source attribution, tracking links and QR downloads.
+* Event deduplication and attribution through navigation, reloads and submission.
+* Existing admin protection.
+
+This website is for validating interest in recurring carpooling between Sage Creek and U of M. Do not build booking, payments or the full carpool app.
+
+1. MAKE THE LANDING PAGE CLEAR
+
+Keep the blue-and-white identity, but improve the layout, typography and visual hierarchy. Design for someone opening the page on their phone after scanning a poster.
+
+Headline:
+“Same campus. Better commute.”
+
+Supporting copy:
+“Drive to U of M? Earn money taking another student on trips you already make. Need rides? Find someone nearby who travels at times that work for you.”
+
+Stage clarification:
+“We’re collecting schedules to see who we could match. No payment or commitment.”
+
+Two prominent buttons:
+
+* “I drive to U of M”
+* “I need rides”
+
+THE BUTTON ALREADY SELECTS THEIR ROLE:
+
+* The driver button opens the driver survey directly.
+* The rider button opens the rider survey directly.
+* Never ask “Are you a driver or rider?” again inside the survey.
+* Preserve the selected role through navigation and reloads.
+* Allow changing it through a small “Change” link beside the survey title.
+* Switching roles must not submit or retain irrelevant answers from the other branch.
+
+Do not claim rides are already available, promise specific earnings, advertise guaranteed backup rides or invent testimonials.
+
+2. REPLACE THE GRAPHIC
+
+Remove the current generic curved-line map.
+
+Create a clean HTML/CSS/SVG illustration that actually explains matching. Show two compact cards:
+
+* “Driver · Mon / Wed / Fri · Arrives 8:30 AM”
+* “Rider · Mon / Wed / Fri · Needs to arrive by 8:45 AM”
+
+Connect them visually with:
+“Similar times. A nearby pickup spot.”
+
+Label the whole illustration “Example match.” Do not make it look like a real available ride or confirmed match.
+
+Keep it readable on small screens. No fake geographic map, stock photo, oversized decorative shapes or distracting animation.
+
+3. REWRITE “HOW IT WORKS”
+
+Use the heading “How it would work” and a Riders / Drivers toggle. The explanatory toggle must not start the survey or select the survey role.
+
+Use three clear steps with short explanations.
+
+RIDERS
+
+1. “Tell us when you need rides”
+   “Choose your campus days, arrival times and when you’re ready to head home.”
+
+2. “Find someone going your way”
+   “We’d look for a nearby student driving at times that work for you.”
+
+3. “Set up your regular rides”
+   “Agree on the days and pickup spot. The plan is a monthly subscription for your arranged rides.”
+
+DRIVERS
+
+1. “Add the trips you already make”
+   “Tell us when you drive to campus and home, and how many seats you can offer.”
+
+2. “Find riders who fit your trip”
+   “We’d look for nearby students whose times work with yours.”
+
+3. “Earn money for giving rides”
+   “Agree on the trips and pickup spot. You’d get paid for rides you complete.”
+
+Below this section:
+“Right now, we’re checking interest, schedules and pricing. If you leave your email, we can contact you about a possible match. Completing the survey does not reserve a ride.”
+
+Remove the repetitive “Same neighbourhood / Real schedules / Better fit” cards. Replace unnecessary filler with a final pair of driver/rider buttons.
+
+4. BUILD A SHORT SURVEY: 11 QUESTIONS PER PERSON
+
+Use the questions below. Do not append questions from earlier prompts.
+
+Every question must have a short, visible helper sentence underneath. Use everyday language, readable helper text, large tap targets and clear options.
+
+The landing-page role selection is already complete and is not a survey question.
+
+QUESTIONS 1–6: BOTH PATHS
+
+1. “Are you a U of M student?”
+   Helper: “This is for students travelling to the Fort Garry campus.”
+   Options:
+
+* Yes, at Fort Garry
+* Starting at Fort Garry this term
+* No / a different campus
+
+For the last option, explain the current scope and end politely without collecting further information.
+
+2. “Which part of Sage Creek are you near?”
+   Helper: “A nearby street, park or shop is enough. We don’t need your home address.”
+   Use a short text field and an “I live outside Sage Creek” option. If selected, change the same field to request their neighbourhood. Flag these responses separately.
+
+3. Driver wording: “Which days could you take passengers?”
+   Rider wording: “Which days do you need rides?”
+   Helper: “For each day, choose to campus, home from campus, or both.”
+   Use weekday rows with independent direction choices.
+
+4. Driver wording: “What times do you usually travel?”
+   Helper: “Enter when you normally arrive on campus and when you leave to go home.”
+
+Rider wording: “What times do you need rides?”
+Helper: “Enter when you need to be on campus and the earliest you can leave to go home.”
+
+Show time fields only for selected days and directions.
+Driver labels:
+
+* Usually arrive on campus at
+* Usually leave campus at
+
+Rider labels:
+
+* Need to arrive on campus by
+* Ready to leave campus at
+
+Allow different times on every day. Include an explicit “Copy to other days” action. Do not automatically assume all weekdays have the same times.
+
+5. “Is your schedule usually the same each week?”
+   Helper: “This helps us see whether regular weekly rides would work.”
+   Options:
+
+* Mostly the same
+* Alternates between weeks
+* Changes often
+
+6. “How flexible are your travel times?”
+   Rider helper: “Could you arrive earlier or leave later to get a ride?”
+   Driver helper: “Could you move your usual trip a little earlier or later?”
+   Options:
+
+* My times are fixed
+* Up to 15 minutes
+* Up to 30 minutes
+* Depends on the day
+
+Store this as a general preference, not automatic permission to change every trip.
+
+QUESTIONS 7–9: RIDERS ONLY
+
+7. “How far would you walk to meet your driver?”
+   Helper: “You’d meet at an agreed nearby spot, which might not be your front door.”
+   Options:
+
+* Up to 3 minutes
+* Up to 5 minutes
+* Up to 10 minutes
+* Up to 15 minutes
+
+8. “What’s the most you’d pay per month for these rides?”
+   Helper: “Choose the highest monthly amount you’d realistically pay for the schedule you selected.”
+
+Show:
+“Your selection: [X] one-way rides per week.”
+“A trip to campus and a trip home count as two rides.”
+
+Selectable options, all CAD:
+
+* $20/month
+* $40/month
+* $60/month
+* $80/month
+* $100/month
+* Enter my own amount
+* Not sure
+* Only if free
+
+Only reveal a numeric CAD field when “Enter my own amount” is selected.
+
+Below the choices:
+“We’re checking budgets. These aren’t confirmed prices.”
+
+9. “What would worry you most about using this?”
+   Helper: “Choose the main thing that could stop you from joining.”
+   Options:
+
+* My driver cancelling
+* Riding with someone I don’t know
+* The price
+* Inconvenient times or pickup
+* Nothing major
+* Other
+
+Reveal an optional short text field for Other.
+
+QUESTIONS 7–9: DRIVERS ONLY
+
+7. “How many passengers could you take?”
+   Helper: “Count the spare seats you’d normally be happy to offer.”
+   Options: 1 / 2 / 3 / 4+
+
+8. “How much extra travel time would you accept?”
+   Helper: “Count any extra driving or waiting to pick up and drop off passengers on one trip.”
+   Options:
+
+* No extra time
+* Up to 5 minutes
+* Up to 10 minutes
+* Up to 15 minutes
+
+9. “What’s the least you’d want to earn for taking one passenger on one trip?”
+   Helper: “One trip means driving to campus OR driving home. Taking someone both ways counts as two paid trips.”
+
+Selectable options, all CAD:
+
+* $1 per passenger per trip
+* $2 per passenger per trip
+* $3 per passenger per trip
+* $4 per passenger per trip
+* $5 per passenger per trip
+* Enter my own amount
+* Not sure
+
+Only reveal a numeric CAD field when “Enter my own amount” is selected.
+
+After an amount is chosen, show:
+“At [X] trips a week with one passenger, that’s about $[Y] a month.”
+
+Calculate Y as selected amount × selected weekly one-way trips × 4.33, rounded to the nearest dollar.
+
+Underneath:
+“Example only, assuming one passenger on every selected trip. Actual earnings depend on completed rides.”
+
+Do not multiply this illustration by all available seats or display it as promised income.
+
+QUESTIONS 10–11: CONTACT AND CONCERNS
+
+10. “How can we contact you if we find a possible match?”
+
+Helper:
+“You can leave your phone number, email, or both. We’ll only use your information for this commute project.”
+
+Show selectable contact options:
+
+* Phone number
+* Email
+* Both
+* I don’t want to be contacted
+
+If they choose Phone number or Both, show:
+
+* First name
+* Phone number
+
+If they choose Email or Both, show:
+
+* First name
+* Email address
+
+Do not require both contact methods. If they choose “I don’t want to be contacted,” hide the contact fields.
+
+Include this optional checkbox whenever they provide contact information:
+
+* “You can contact me about a possible commute match.”
+
+Require the checkbox for follow-up contact, but allow them to submit without agreeing to be contacted.
+
+Validate phone numbers and email addresses. Store phone number, email, selected contact method and contact permission separately.
+
+11. “What could stop you from using this?”
+
+Helper:
+“Choose the concern that matters most to you. This helps us improve the idea before launching it.”
+
+Show these selectable options:
+
+* The price
+* My driver or rider cancelling
+* Safety or trust
+* Pickup location
+* The times would not work
+* I would rather use the bus or drive myself
+* I’m not sure yet
+* Something else
+
+If “Something else” is selected, reveal a short text box:
+“Tell us what you have in mind.”
+
+Allow only one main option, except the text field for “Something else.” Make this question optional.
+
+Do not ask when they want to start. Remove that question completely.
+
+AFTER SUBMISSION: INVITE THEM TO SHARE
+
+After the confirmation message, show a separate share section:
+
+“Know another U of M student in Sage Creek?”
+
+Helper:
+“More drivers and riders give everyone a better chance of finding a commute that works.”
+
+Primary button:
+“Share this survey”
+
+Include:
+
+* Native phone share button when supported
+* Copy link button
+* A pre-written text message:
+
+“Hey, I’m helping validate a carpool service for U of M students in Sage Creek. It could help drivers earn money and riders find regular rides. Can you fill out this short survey? [survey link]”
+
+The share section must appear after submission and must not count as another survey question. Do not force users to share or block completion if they skip it.
+
+Keep the final confirmation simple:
+
+“Thanks — your answers will help us see which commutes could work.”
+
+If they gave contact information and allowed follow-up, add:
+
+“We’ll contact you if we find a possible match.”
+
+5. SURVEY EXPERIENCE AND DATA
+
+* Exactly 11 questions on each complete eligible path.
+* Use a few short screens with a progress indicator and Back/Continue buttons.
+* Preserve answers when navigating back.
+* Do not hide extra unrelated questions inside numbered questions.
+* No preselected prices or “recommended” price.
+* Store preset and custom amounts numerically, with their selection type.
+* Keep “Not sure,” unanswered and zero distinct.
+* Reject negative or invalid amounts.
+* Recalculate ride counts and earnings illustrations if the schedule changes.
+* Do not claim a one-minute completion time without checking.
+* Analytics failures must not block submission.
+
+Version the revised survey. Preserve historical responses and leave fields that were never collected blank.
+
+Update the protected admin response view and existing export with the answers actually collected, including role, per-day schedule, weekly trip count, price units, contact permission, survey version and original attribution.
+
+Do not report stated interest as confirmed bookings or commitments.
+
+Confirmation:
+“Thanks—your answers will help us see which commutes could work.”
+
+For people who opted into contact, add:
+“We’ll contact you if we find a possible match.”
+
+6. VERIFY AND SHOW THE RESULT
+
+Check mobile and desktop layouts for readability, spacing and overflow.
+
+Verify:
+
+* Each landing-page button opens the correct branch without asking for their role again.
+* Each eligible path has 11 questions.
+* Every question has visible helper text.
+* Different times on different days and one-way-only selections work.
+* Preset prices, custom amounts and “Not sure” save correctly.
+* Optional contact works correctly.
+* Existing responses remain accessible.
+* P01/P02/P03 attribution survives reloads and completed submissions.
+* Retries do not create duplicate responses or completion counts.
+
+Show the updated preview and briefly explain what changed and whether publishing is required. Do not publish automatically.
