@@ -1,0 +1,65 @@
+Fix these issues in the existing project. Keep the source tracking and all saved responses.
+
+1. SHARE BUTTONS
+
+The “Copy link” button is currently copying the entire share message.
+
+Fix it so:
+
+* “Copy link” copies only the public survey URL.
+* The native share button can include the full pre-written message.
+* Use the canonical public URL, not the Janeway/Replit preview URL.
+* Do not carry P01/P02/P03 poster attribution into shared links.
+
+2. REMOVE THE DUPLICATE CONCERN QUESTION
+
+Two questions ask nearly the same thing:
+
+* “What would worry you most about using this?”
+* “What could stop you from using this?”
+
+Keep only one: “What could stop you from using this?”
+
+Helper:
+“Choose the concern that matters most to you. This helps us improve the idea.”
+
+Options:
+
+* The price
+* My driver or rider cancelling
+* Safety or trust
+* Pickup location
+* The times would not work
+* I would rather use the bus or drive myself
+* I’m not sure yet
+* Something else
+
+If “Something else” is selected, show a short text field.
+
+Remove the other concern question completely. Do not leave an empty step or duplicate field. Renumber the survey so the completed path has 10 numbered questions.
+
+3. FIX DAY AND DIRECTION SELECTION STYLES
+
+On the weekly schedule question, “To campus” and “Home from campus” are independent choices.
+
+* An unchecked direction must stay white with an empty circle.
+* Only the selected direction gets the blue background, blue border and checkmark.
+* Selecting “To campus” must not make “Home from campus” look selected.
+* Make the visual state match the actual saved value on load, back navigation and reload.
+* Keep the two directions independently selectable for every weekday.
+
+4. CLEAN UP NUMBERED SPACING
+
+Fix the “How it would work” 1/2/3 cards and any survey step-number spacing.
+
+Use:
+
+* Consistent compact vertical spacing
+* Numbers aligned with each card’s title
+* Tighter spacing between number, heading and explanation
+* Equal card heights only where it improves alignment
+* Responsive sizing on mobile
+
+Remove the oversized empty gaps and awkward isolated numbers. The section should scan naturally as three simple steps.
+
+Verify the landing page, both survey branches, the 10-question count, share behavior, schedule styling and mobile layout. Do not publish automatically.
