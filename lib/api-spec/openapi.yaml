@@ -79,6 +79,8 @@ paths:
       summary: Get grouped questionnaire results
       parameters:
         - $ref: "#/components/parameters/AdminPassword"
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
       responses:
         "200":
           description: Results summary
@@ -99,6 +101,8 @@ paths:
       summary: List submitted questionnaire responses
       parameters:
         - $ref: "#/components/parameters/AdminPassword"
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
       responses:
         "200":
           description: Raw responses
@@ -121,6 +125,8 @@ paths:
       summary: Download questionnaire responses as CSV
       parameters:
         - $ref: "#/components/parameters/AdminPassword"
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
       responses:
         "200":
           description: CSV export
@@ -128,6 +134,43 @@ paths:
             text/csv:
               schema:
                 type: string
+        "401":
+          description: Invalid admin password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/posters/{posterId}:
+    patch:
+      operationId: updateAdminPoster
+      tags: [admin]
+      summary: Update a poster registry entry
+      parameters:
+        - $ref: "#/components/parameters/AdminPassword"
+        - name: posterId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/PosterSource"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PosterRegistryUpdate"
+      responses:
+        "200":
+          description: Updated poster registry entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PosterRegistryItem"
+        "400":
+          description: Invalid poster registry data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Invalid admin password
           content:
@@ -142,7 +185,64 @@ components:
       required: true
       schema:
         type: string
+    FromDate:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+    ToDate:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
   schemas:
+    PosterSource:
+      type: string
+      enum: [P01, P02, P03, direct_unknown]
+    PosterRegistryUpdate:
+      type: object
+      required: [locationName, latitude, longitude]
+      properties:
+        locationName:
+          type: ["string", "null"]
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+    PosterRegistryItem:
+      type: object
+      required: [posterId, locationName, latitude, longitude]
+      properties:
+        posterId:
+          $ref: "#/components/schemas/PosterSource"
+        locationName:
+          type: ["string", "null"]
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+    AttributionSummary:
+      allOf:
+        - $ref: "#/components/schemas/PosterRegistryItem"
+        - type: object
+          required: [label, landingVisits, estimatedUniqueVisitors, surveyStarts, completedSurveys, completionRate]
+          properties:
+            label:
+              type: string
+            landingVisits:
+              type: number
+            estimatedUniqueVisitors:
+              type: number
+            surveyStarts:
+              type: number
+            completedSurveys:
+              type: number
+            completionRate:
+              type: number
     HealthStatus:
       type: object
       properties:
@@ -169,6 +269,8 @@ components:
       type: object
       required:
         - role
+        - posterSource
+        - submissionId
         - livesInSageCreek
         - isUofMStudent
         - schedule
@@ -185,6 +287,11 @@ components:
         role:
           type: string
           enum: [driver, rider]
+        posterSource:
+          $ref: "#/components/schemas/PosterSource"
+        submissionId:
+          type: string
+          minLength: 1
         livesInSageCreek:
           type: boolean
         isUofMStudent:
@@ -253,7 +360,7 @@ components:
           format: date-time
     EventInput:
       type: object
-      required: [eventName]
+      required: [eventName, posterSource, anonymousVisitorId, browserSessionId]
       properties:
         eventName:
           type: string
@@ -263,6 +370,15 @@ components:
             - rider_role_selected
             - step_reached
             - form_completed
+            - survey_started
+        posterSource:
+          $ref: "#/components/schemas/PosterSource"
+        anonymousVisitorId:
+          type: string
+          minLength: 1
+        browserSessionId:
+          type: string
+          minLength: 1
         role:
           type: ["string", "null"]
         step:
@@ -322,6 +438,8 @@ components:
         - transportMethods
         - commuteDurations
         - potentialOverlap
+        - attribution
+        - posterRegistry
       properties:
         total:
           type: number
@@ -373,4 +491,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScheduleBucket"
+        attribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttributionSummary"
+        posterRegistry:
+          type: array
+          items:
+            $ref: "#/components/schemas/PosterRegistryItem"
 

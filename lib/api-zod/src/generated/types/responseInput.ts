@@ -5,11 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PosterSource } from './posterSource';
 import type { ResponseInputRole } from './responseInputRole';
 import type { ScheduleDayInput } from './scheduleDayInput';
 
 export interface ResponseInput {
   role: ResponseInputRole;
+  posterSource: PosterSource;
+  /** @minLength 1 */
+  submissionId: string;
   livesInSageCreek: boolean;
   isUofMStudent: boolean;
   /** @minItems 1 */

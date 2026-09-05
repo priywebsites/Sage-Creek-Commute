@@ -6,9 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EventInputEventName } from './eventInputEventName';
+import type { PosterSource } from './posterSource';
 
 export interface EventInput {
   eventName: EventInputEventName;
+  posterSource: PosterSource;
+  /** @minLength 1 */
+  anonymousVisitorId: string;
+  /** @minLength 1 */
+  browserSessionId: string;
   /** @nullable */
   role?: string | null;
   /** @nullable */

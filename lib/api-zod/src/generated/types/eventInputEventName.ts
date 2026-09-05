@@ -15,4 +15,5 @@ export const EventInputEventName = {
   rider_role_selected: 'rider_role_selected',
   step_reached: 'step_reached',
   form_completed: 'form_completed',
+  survey_started: 'survey_started',
 } as const;

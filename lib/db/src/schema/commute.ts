@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const commuteResponsesTable = pgTable("commute_responses", {
@@ -30,6 +30,8 @@ export const commuteResponsesTable = pgTable("commute_responses", {
   utmMedium: text("utm_medium"),
   utmCampaign: text("utm_campaign"),
   referrer: text("referrer"),
+  posterSource: text("poster_source"),
+  submissionId: text("submission_id").unique(),
 });
 
 export const commuteEventsTable = pgTable("commute_events", {
@@ -38,6 +40,18 @@ export const commuteEventsTable = pgTable("commute_events", {
   eventName: text("event_name").notNull(),
   role: text("role"),
   step: integer("step"),
+  posterSource: text("poster_source"),
+  anonymousVisitorId: text("anonymous_visitor_id"),
+  browserSessionId: text("browser_session_id"),
+  dedupeKey: text("dedupe_key").unique(),
+});
+
+export const commutePosterRegistryTable = pgTable("commute_poster_registry", {
+  posterId: text("poster_id").primaryKey(),
+  locationName: text("location_name"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertCommuteResponseSchema = createInsertSchema(commuteResponsesTable).omit({
@@ -52,3 +66,4 @@ export const insertCommuteEventSchema = createInsertSchema(commuteEventsTable).o
   createdAt: true,
 });
 export type InsertCommuteEvent = z.infer<typeof insertCommuteEventSchema>;
+export type CommutePosterRegistry = typeof commutePosterRegistryTable.$inferSelect;

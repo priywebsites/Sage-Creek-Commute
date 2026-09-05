@@ -5,7 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AttributionSummary } from './attributionSummary';
 import type { DistributionItem } from './distributionItem';
+import type { PosterRegistryItem } from './posterRegistryItem';
 import type { ScheduleBucket } from './scheduleBucket';
 
 export interface AdminSummary {
@@ -24,4 +26,6 @@ export interface AdminSummary {
   transportMethods: DistributionItem[];
   commuteDurations: DistributionItem[];
   potentialOverlap: ScheduleBucket[];
+  attribution: AttributionSummary[];
+  posterRegistry: PosterRegistryItem[];
 }

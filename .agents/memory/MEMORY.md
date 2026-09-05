@@ -1,0 +1,1 @@
+- [Analytics schema migrations](analytics-schema-migrations.md) — preserve existing event rows when adding attribution constraints; noninteractive schema pushes may ask to truncate.

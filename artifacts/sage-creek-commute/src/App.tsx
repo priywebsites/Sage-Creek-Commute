@@ -23,7 +23,10 @@ import {
 } from 'lucide-react';
 import {
   EventInputEventName,
+  type PosterSource,
+  type AttributionSummary,
   type AdminResponse,
+  type PosterRegistryItem,
   type AdminSummary,
   type ResponseInput,
   useCreateEvent,
@@ -32,8 +35,10 @@ import {
   useGetAdminResponses,
   useGetAdminSummary,
   useHealthCheck,
+  useUpdateAdminPoster,
   getGetAdminResponsesQueryKey,
   getGetAdminSummaryQueryKey,
+  getExportAdminResponsesQueryKey,
 } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -45,6 +50,10 @@ const queryClient = new QueryClient();
 type Role = 'driver' | 'rider';
 type ExitKind = 'location' | 'student' | null;
 type DayName = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday';
+const qrPosterSources = new Set<PosterSource>(['P01', 'P02', 'P03']);
+const posterAttributionKey = 'sage_creek_commute_poster_source';
+const anonymousVisitorKey = 'sage_creek_commute_anonymous_visitor';
+const browserSessionKey = 'sage_creek_commute_browser_session';
 
 const days: Array<{ key: DayName; label: string }> = [
   { key: 'monday', label: 'Mon' },
@@ -78,6 +87,8 @@ const blankSchedule = days.map(({ key }) => ({
 }));
 
 const initialResponseFields: Omit<ResponseInput, 'role'> = {
+  posterSource: 'direct_unknown',
+  submissionId: '',
   livesInSageCreek: true,
   isUofMStudent: true,
   schedule: blankSchedule,
@@ -104,13 +115,62 @@ const initialResponseFields: Omit<ResponseInput, 'role'> = {
   referrer: typeof document !== 'undefined' ? document.referrer || null : null,
 };
 
+function createClientId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getAttributionContext(): {
+  posterSource: PosterSource;
+  anonymousVisitorId: string;
+  browserSessionId: string;
+} {
+  if (typeof window === 'undefined') {
+    return {
+      posterSource: 'direct_unknown',
+      anonymousVisitorId: 'server-rendered',
+      browserSessionId: 'server-rendered',
+    };
+  }
+  const explicitSource = new URLSearchParams(window.location.search).get('source');
+  const storedSource = window.localStorage.getItem(posterAttributionKey);
+  const explicitPosterSource = qrPosterSources.has(explicitSource as PosterSource)
+    ? explicitSource as PosterSource
+    : null;
+  const posterSource = explicitPosterSource
+    ?? (qrPosterSources.has(storedSource as PosterSource) ? storedSource as PosterSource : 'direct_unknown');
+  if (explicitPosterSource) {
+    window.localStorage.setItem(posterAttributionKey, explicitPosterSource);
+  }
+  let anonymousVisitorId = window.localStorage.getItem(anonymousVisitorKey);
+  if (!anonymousVisitorId) {
+    anonymousVisitorId = createClientId('visitor');
+    window.localStorage.setItem(anonymousVisitorKey, anonymousVisitorId);
+  }
+  let browserSessionId = window.sessionStorage.getItem(browserSessionKey);
+  if (!browserSessionId) {
+    browserSessionId = createClientId('session');
+    window.sessionStorage.setItem(browserSessionKey, browserSessionId);
+  }
+  return { posterSource, anonymousVisitorId, browserSessionId };
+}
+
 function trackEvent(
   mutate: ReturnType<typeof useCreateEvent>['mutate'],
   eventName: EventInputEventName,
   role?: Role,
   step?: number,
 ) {
-  mutate({ data: { eventName, role: role ?? null, step: step ?? null } });
+  mutate({
+    data: {
+      eventName,
+      role: role ?? null,
+      step: step ?? null,
+      ...getAttributionContext(),
+    },
+  }, { onError: () => undefined });
 }
 
 function Brand({ light = false }: { light?: boolean }) {
@@ -183,13 +243,14 @@ function LandingPage({ onStart }: { onStart: (role: Role) => void }) {
   const createEvent = useCreateEvent();
   useEffect(() => {
     trackEvent(createEvent.mutate, EventInputEventName.landing_viewed);
-  }, []);
+  }, [createEvent.mutate]);
   const selectRole = (role: Role) => {
     trackEvent(
       createEvent.mutate,
       role === 'driver' ? EventInputEventName.driver_role_selected : EventInputEventName.rider_role_selected,
       role,
     );
+    trackEvent(createEvent.mutate, EventInputEventName.survey_started, role);
     onStart(role);
   };
 
@@ -418,7 +479,12 @@ function ContactFields({ form, update }: { form: ResponseInput; update: (patch: 
 
 function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role; onComplete: (response: ResponseInput) => void; onExit: () => void }) {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<ResponseInput>({ ...initialResponseFields, role: initialRole });
+  const [form, setForm] = useState<ResponseInput>(() => ({
+    ...initialResponseFields,
+    role: initialRole,
+    posterSource: getAttributionContext().posterSource,
+    submissionId: createClientId('submission'),
+  }));
   const [exitKind, setExitKind] = useState<ExitKind>(null);
   const submitGuard = useRef(false);
   const createResponse = useCreateResponse();
@@ -427,7 +493,13 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
   const update = (patch: Partial<ResponseInput>) => setForm((previous) => ({ ...previous, ...patch }));
 
   const reset = () => {
-    setForm({ ...initialResponseFields, role: initialRole, schedule: blankSchedule.map((entry) => ({ ...entry })) });
+    setForm({
+      ...initialResponseFields,
+      role: initialRole,
+      posterSource: getAttributionContext().posterSource,
+      submissionId: createClientId('submission'),
+      schedule: blankSchedule.map((entry) => ({ ...entry })),
+    });
     setStep(0);
     setExitKind(null);
     submitGuard.current = false;
@@ -458,12 +530,9 @@ function Questionnaire({ initialRole, onComplete, onExit }: { initialRole: Role;
     if (step === 10) {
       if (submitGuard.current || createResponse.isPending) return;
       submitGuard.current = true;
-      const search = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
       const payload: ResponseInput = {
         ...form,
-        utmSource: search.get('utm_source'),
-        utmMedium: search.get('utm_medium'),
-        utmCampaign: search.get('utm_campaign'),
+         posterSource: getAttributionContext().posterSource,
         referrer: typeof document !== 'undefined' ? document.referrer || null : null,
       };
       createResponse.mutate({ data: payload }, {
@@ -725,6 +794,7 @@ function ResponseDetails({ response }: { response: AdminResponse }) {
           {response.email && <ResponseField label="Email" value={response.email} />}
           {response.phone && <ResponseField label="Phone" value={response.phone} />}
           <ResponseField label="Prefers text" value={response.prefersText ? 'Yes' : 'No'} />
+          <ResponseField label="Attribution" value={response.posterSource === 'direct_unknown' ? 'Direct/Unknown' : response.posterSource} />
           {utmValues && <ResponseField label="Source / UTM" value={utmValues} />}
           {response.referrer && <ResponseField label="Referrer" value={response.referrer} />}
           {response.role === 'driver' && response.maxDetour && <ResponseField label="Maximum detour" value={response.maxDetour} />}
@@ -744,8 +814,115 @@ function ResponseDetails({ response }: { response: AdminResponse }) {
   );
 }
 
+type RegistryDraft = {
+  locationName: string;
+  latitude: string;
+  longitude: string;
+};
+
+function PosterAttributionSection({
+  attribution,
+  registry,
+  password,
+}: {
+  attribution: AttributionSummary[];
+  registry: PosterRegistryItem[];
+  password: string;
+}) {
+  const request = useMemo(() => ({ headers: { 'X-Admin-Password': password } }), [password]);
+  const updatePoster = useUpdateAdminPoster({ request });
+  const [drafts, setDrafts] = useState<Record<string, RegistryDraft>>({});
+  const [savedSource, setSavedSource] = useState<string | null>(null);
+  const [errorSource, setErrorSource] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDrafts(Object.fromEntries(registry.map((entry) => [
+      entry.posterId,
+      {
+        locationName: entry.locationName ?? '',
+        latitude: entry.latitude == null ? '' : String(entry.latitude),
+        longitude: entry.longitude == null ? '' : String(entry.longitude),
+      },
+    ])));
+  }, [registry]);
+
+  const save = (posterId: PosterSource) => {
+    const draft = drafts[posterId];
+    if (!draft) return;
+    const latitude = draft.latitude.trim() === '' ? null : Number(draft.latitude);
+    const longitude = draft.longitude.trim() === '' ? null : Number(draft.longitude);
+    if ((latitude !== null && !Number.isFinite(latitude)) || (longitude !== null && !Number.isFinite(longitude))) {
+      setErrorSource(posterId);
+      return;
+    }
+    setErrorSource(null);
+    updatePoster.mutate({
+      posterId,
+      data: {
+        locationName: draft.locationName.trim() || null,
+        latitude,
+        longitude,
+      },
+    }, {
+      onSuccess: () => setSavedSource(posterId),
+      onError: () => setErrorSource(posterId),
+    });
+  };
+
+  return (
+    <div className="admin-card attribution-card mt-5">
+      <div className="section-heading">
+        <div>
+          <div className="eyebrow">Independent attribution</div>
+          <h3 className="mt-2">QR landing visits</h3>
+          <p className="section-note">Unique visitors are estimated with an anonymous browser identifier, not verified people. Landing visits measure page loads, not camera scans.</p>
+        </div>
+        <span className="data-note">P01–P03 + Direct/Unknown</span>
+      </div>
+      <div className="attribution-table mt-5">
+        <div className="attribution-row attribution-head">
+          <span>Source</span><span>Landing visits</span><span>Estimated visitors</span><span>Starts</span><span>Completed</span><span>Completion</span><span>QR file</span>
+        </div>
+        {attribution.map((item) => (
+          <div className="attribution-row" key={item.posterId}>
+            <div><strong>{item.label}</strong>{item.locationName && <small>{item.locationName}</small>}</div>
+            <strong>{item.landingVisits}</strong>
+            <strong>{item.estimatedUniqueVisitors}</strong>
+            <strong>{item.surveyStarts}</strong>
+            <strong>{item.completedSurveys}</strong>
+            <strong>{(item.completionRate * 100).toFixed(1)}%</strong>
+            {item.posterId === 'direct_unknown'
+              ? <span className="data-note">—</span>
+              : <a className="qr-download-link" href={`${import.meta.env.BASE_URL}qr/poster-${item.posterId.slice(1).toLowerCase()}.svg`} download={`poster-${item.posterId.slice(1).toLowerCase()}.svg`}>Download</a>}
+          </div>
+        ))}
+      </div>
+      <div className="poster-registry mt-6">
+        <div className="eyebrow">Poster registry</div>
+        <p className="section-note">Add final pin details when ready. Blank values are intentionally left unknown.</p>
+        {registry.filter((entry) => entry.posterId !== 'direct_unknown').map((entry) => {
+          const draft = drafts[entry.posterId] ?? { locationName: '', latitude: '', longitude: '' };
+          const posterId = entry.posterId as PosterSource;
+          return (
+            <div className="poster-registry-row" key={entry.posterId}>
+              <strong>{entry.posterId}</strong>
+              <input className="admin-input" value={draft.locationName} placeholder="Location name" onChange={(event) => setDrafts((current) => ({ ...current, [entry.posterId]: { ...draft, locationName: event.target.value } }))} />
+              <input className="admin-input" value={draft.latitude} placeholder="Latitude" inputMode="decimal" onChange={(event) => setDrafts((current) => ({ ...current, [entry.posterId]: { ...draft, latitude: event.target.value } }))} />
+              <input className="admin-input" value={draft.longitude} placeholder="Longitude" inputMode="decimal" onChange={(event) => setDrafts((current) => ({ ...current, [entry.posterId]: { ...draft, longitude: event.target.value } }))} />
+              <button className="btn-quiet" type="button" onClick={() => save(posterId)} disabled={updatePoster.isPending}>{updatePoster.isPending ? 'Saving…' : savedSource === entry.posterId ? 'Saved' : 'Save'}</button>
+              {errorSource === entry.posterId && <span className="field-error">Use numeric coordinates.</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard({ password }: { password: string }) {
   const [filter, setFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | Role>('all');
   const [weekdayFilter, setWeekdayFilter] = useState('all');
   const [arrivalFilter, setArrivalFilter] = useState('all');
@@ -754,9 +931,13 @@ function AdminDashboard({ password }: { password: string }) {
   const [dealbreakerFilter, setDealbreakerFilter] = useState('all');
   const [reliabilityFilter, setReliabilityFilter] = useState('all');
   const request = useMemo(() => ({ headers: { 'X-Admin-Password': password } }), [password]);
-  const summaryQuery = useGetAdminSummary({ query: { enabled: Boolean(password), queryKey: getGetAdminSummaryQueryKey() }, request });
-  const responsesQuery = useGetAdminResponses({ query: { enabled: Boolean(password), queryKey: getGetAdminResponsesQueryKey() }, request });
-  const exportQuery = useExportAdminResponses({ query: { enabled: false, queryKey: ['/api/admin/export.csv'] }, request });
+  const dateParams = useMemo(() => ({
+    ...(fromDate ? { from: fromDate } : {}),
+    ...(toDate ? { to: toDate } : {}),
+  }), [fromDate, toDate]);
+  const summaryQuery = useGetAdminSummary(dateParams, { query: { enabled: Boolean(password), queryKey: getGetAdminSummaryQueryKey(dateParams) }, request });
+  const responsesQuery = useGetAdminResponses(dateParams, { query: { enabled: Boolean(password), queryKey: getGetAdminResponsesQueryKey(dateParams) }, request });
+  const exportQuery = useExportAdminResponses(dateParams, { query: { enabled: false, queryKey: getExportAdminResponsesQueryKey(dateParams) }, request });
   const healthQuery = useHealthCheck({ query: { queryKey: ['/api/healthz'] } });
   const summary = summaryQuery.data as AdminSummary | undefined;
   const responses = (responsesQuery.data ?? []) as AdminResponse[];
@@ -790,7 +971,9 @@ function AdminDashboard({ password }: { password: string }) {
   const total = summary?.total ?? responses.length;
   return <main className="admin-wrap"><div className="container-wide">
     <div className="admin-header"><div><Link href="/" className="question-brand" data-testid="link-admin-dashboard-brand"><Brand /></Link><div className="eyebrow mt-10">Private results dashboard</div><h1 className="display-lg mt-3">The shape of<br /><em>the commute.</em></h1></div><div className="admin-header-actions"><span className="health-pill"><span className={`health-dot ${healthQuery.data?.status === 'ok' ? 'live' : ''}`} /> API {healthQuery.data?.status ?? 'checking'}</span><button onClick={download} className="btn-quiet" disabled={exportQuery.isFetching} data-testid="button-export-csv"><Download size={16} /> {exportQuery.isFetching ? 'Preparing…' : 'Export CSV'}</button></div></div>
+      <div className="admin-card attribution-filters mt-8"><div className="section-heading"><div><div className="eyebrow">Reporting window</div><h3 className="mt-2">Filter attribution and responses by date</h3></div><button className="btn-quiet" type="button" onClick={() => { setFromDate(''); setToDate(''); }}>Clear dates</button></div><div className="date-filter-fields mt-4"><label>From<input className="admin-input" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label><label>To<input className="admin-input" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label></div></div>
      <div className="admin-stat-grid"><AdminStat value={total} label="total responses" /><AdminStat value={summary?.drivers ?? 0} label="drivers (unique)" accent /><AdminStat value={summary?.riders ?? 0} label="riders (unique)" /><AdminStat value={(summary?.interestedDrivers ?? 0) + (summary?.interestedRiders ?? 0)} label="definitely / probably (unique)" accent /></div>
+      <PosterAttributionSection attribution={summary?.attribution ?? []} registry={summary?.posterRegistry ?? []} password={password} />
      <div className="section-rule mt-12 pt-8"><div className="section-heading"><div><div className="eyebrow">Grouped signals</div><h2>What students are telling us</h2><p className="section-note">Person-level cards count unique completed response IDs. Schedule cards count commute days, not unique students.</p></div><span className="data-note">Updates on refresh</span></div></div>
       <div className="admin-grid mt-5"><Distribution title="Compensation · drivers" items={summary?.driverCompensation} /><Distribution title="Willingness to pay · riders" items={summary?.riderWillingness} /><Distribution title="Active commute days by weekday" items={summary?.weekdayActivity} note="Counts commute days, not unique students." /><Distribution title="Scheduled arrivals" items={summary?.arrivalDistribution} note="Counts commute days, not unique students." /><Distribution title="Current transport" items={summary?.transportMethods} /><Distribution title="Current commute duration" items={summary?.commuteDurations} /><Distribution title="Schedule reliability" items={summary?.reliability} /><Distribution title="Dealbreakers · all roles" items={[...(summary?.driverDealbreakers ?? []), ...(summary?.riderDealbreakers ?? [])]} /></div>
     <div className="admin-card mt-5"><div className="section-heading"><div><div className="eyebrow">Potential overlap</div><h3 className="mt-2">Where driver and rider schedules may line up</h3></div><span className="data-note">day / arrival window</span></div><div className="overlap-grid mt-5">{(summary?.potentialOverlap ?? []).length ? summary?.potentialOverlap.map((bucket) => <div className="overlap-cell" key={`${bucket.day}-${bucket.time}`}><span>{bucket.day.slice(0, 3)}</span><strong>{bucket.time}</strong><small><b>{bucket.drivers}</b> drivers · <b>{bucket.riders}</b> riders</small></div>) : <p className="empty-admin">Overlap buckets will appear after the first responses.</p>}</div></div>

@@ -24,7 +24,13 @@ import type {
   AdminSummary,
   ErrorResponse,
   EventInput,
+  ExportAdminResponsesParams,
+  GetAdminResponsesParams,
+  GetAdminSummaryParams,
   HealthStatus,
+  PosterRegistryItem,
+  PosterRegistryUpdate,
+  PosterSource,
   ResponseCreated,
   ResponseInput
 } from './api.schemas';
@@ -276,20 +282,27 @@ export const useCreateEvent = <TError = ErrorType<ErrorResponse>,
       return useMutation(getCreateEventMutationOptions(options));
     }
 
-export const getGetAdminSummaryUrl = () => {
+export const getGetAdminSummaryUrl = (params?: GetAdminSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/admin/summary`
+  return stringifiedParams.length > 0 ? `/api/admin/summary?${stringifiedParams}` : `/api/admin/summary`
 }
 
 /**
  * @summary Get grouped questionnaire results
  */
-export const getAdminSummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSummary> => {
+export const getAdminSummary = async (params?: GetAdminSummaryParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminSummary> => {
 
-  return customFetch<AdminSummary>(getGetAdminSummaryUrl(),
+  return customFetch<AdminSummary>(getGetAdminSummaryUrl(params),
   {
     ...options,
     method: 'GET'
@@ -302,23 +315,23 @@ export const getAdminSummary = async ( options?: Parameters<typeof customFetch>[
 
 
 
-export const getGetAdminSummaryQueryKey = () => {
+export const getGetAdminSummaryQueryKey = (params?: GetAdminSummaryParams,) => {
     return [
-    `/api/admin/summary`
+    `/api/admin/summary`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetAdminSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSummary>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetAdminSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSummary>>, TError = ErrorType<ErrorResponse>>(params?: GetAdminSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAdminSummaryQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminSummaryQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSummary>>> = ({ signal }) => getAdminSummary({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSummary>>> = ({ signal }) => getAdminSummary(params, { signal, ...requestOptions });
 
 
 
@@ -336,11 +349,11 @@ export type GetAdminSummaryQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetAdminSummary<TData = Awaited<ReturnType<typeof getAdminSummary>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetAdminSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetAdminSummaryQueryOptions(options)
+  const queryOptions = getGetAdminSummaryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -353,20 +366,27 @@ export function useGetAdminSummary<TData = Awaited<ReturnType<typeof getAdminSum
 
 
 
-export const getGetAdminResponsesUrl = () => {
+export const getGetAdminResponsesUrl = (params?: GetAdminResponsesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/admin/responses`
+  return stringifiedParams.length > 0 ? `/api/admin/responses?${stringifiedParams}` : `/api/admin/responses`
 }
 
 /**
  * @summary List submitted questionnaire responses
  */
-export const getAdminResponses = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminResponse[]> => {
+export const getAdminResponses = async (params?: GetAdminResponsesParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminResponse[]> => {
 
-  return customFetch<AdminResponse[]>(getGetAdminResponsesUrl(),
+  return customFetch<AdminResponse[]>(getGetAdminResponsesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -379,23 +399,23 @@ export const getAdminResponses = async ( options?: Parameters<typeof customFetch
 
 
 
-export const getGetAdminResponsesQueryKey = () => {
+export const getGetAdminResponsesQueryKey = (params?: GetAdminResponsesParams,) => {
     return [
-    `/api/admin/responses`
+    `/api/admin/responses`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetAdminResponsesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminResponses>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetAdminResponsesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminResponses>>, TError = ErrorType<ErrorResponse>>(params?: GetAdminResponsesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAdminResponsesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminResponsesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminResponses>>> = ({ signal }) => getAdminResponses({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminResponses>>> = ({ signal }) => getAdminResponses(params, { signal, ...requestOptions });
 
 
 
@@ -413,11 +433,11 @@ export type GetAdminResponsesQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetAdminResponses<TData = Awaited<ReturnType<typeof getAdminResponses>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetAdminResponsesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetAdminResponsesQueryOptions(options)
+  const queryOptions = getGetAdminResponsesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -430,20 +450,27 @@ export function useGetAdminResponses<TData = Awaited<ReturnType<typeof getAdminR
 
 
 
-export const getExportAdminResponsesUrl = () => {
+export const getExportAdminResponsesUrl = (params?: ExportAdminResponsesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/admin/export.csv`
+  return stringifiedParams.length > 0 ? `/api/admin/export.csv?${stringifiedParams}` : `/api/admin/export.csv`
 }
 
 /**
  * @summary Download questionnaire responses as CSV
  */
-export const exportAdminResponses = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+export const exportAdminResponses = async (params?: ExportAdminResponsesParams, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
 
-  return customFetch<string>(getExportAdminResponsesUrl(),
+  return customFetch<string>(getExportAdminResponsesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -456,23 +483,23 @@ export const exportAdminResponses = async ( options?: Parameters<typeof customFe
 
 
 
-export const getExportAdminResponsesQueryKey = () => {
+export const getExportAdminResponsesQueryKey = (params?: ExportAdminResponsesParams,) => {
     return [
-    `/api/admin/export.csv`
+    `/api/admin/export.csv`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getExportAdminResponsesQueryOptions = <TData = Awaited<ReturnType<typeof exportAdminResponses>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getExportAdminResponsesQueryOptions = <TData = Awaited<ReturnType<typeof exportAdminResponses>>, TError = ErrorType<ErrorResponse>>(params?: ExportAdminResponsesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getExportAdminResponsesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getExportAdminResponsesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAdminResponses>>> = ({ signal }) => exportAdminResponses({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAdminResponses>>> = ({ signal }) => exportAdminResponses(params, { signal, ...requestOptions });
 
 
 
@@ -490,11 +517,11 @@ export type ExportAdminResponsesQueryError = ErrorType<ErrorResponse>
  */
 
 export function useExportAdminResponses<TData = Awaited<ReturnType<typeof exportAdminResponses>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ExportAdminResponsesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getExportAdminResponsesQueryOptions(options)
+  const queryOptions = getExportAdminResponsesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -506,4 +533,76 @@ export function useExportAdminResponses<TData = Awaited<ReturnType<typeof export
 
 
 
+
+export const getUpdateAdminPosterUrl = (posterId: PosterSource,) => {
+
+
+
+
+  return `/api/admin/posters/${posterId}`
+}
+
+/**
+ * @summary Update a poster registry entry
+ */
+export const updateAdminPoster = async (posterId: PosterSource,
+    posterRegistryUpdate: PosterRegistryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PosterRegistryItem> => {
+
+  return customFetch<PosterRegistryItem>(getUpdateAdminPosterUrl(posterId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(posterRegistryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminPosterMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPoster>>, TError,{posterId: PosterSource;data: BodyType<PosterRegistryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminPoster>>, TError,{posterId: PosterSource;data: BodyType<PosterRegistryUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminPoster'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminPoster>>, {posterId: PosterSource;data: BodyType<PosterRegistryUpdate>}> = (props) => {
+          const {posterId,data} = props ?? {};
+
+          return  updateAdminPoster(posterId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminPosterMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminPoster>>>
+    export type UpdateAdminPosterMutationBody = BodyType<PosterRegistryUpdate>
+    export type UpdateAdminPosterMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a poster registry entry
+ */
+export const useUpdateAdminPoster = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPoster>>, TError,{posterId: PosterSource;data: BodyType<PosterRegistryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminPoster>>,
+        TError,
+        {posterId: PosterSource;data: BodyType<PosterRegistryUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminPosterMutationOptions(options));
+    }
 

@@ -1,17 +1,26 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { asc, desc } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import {
   CreateEventBody,
   CreateResponseBody,
   CreateResponseResponse,
   GetAdminResponsesResponse,
   GetAdminSummaryResponse,
+  UpdateAdminPosterBody,
+  UpdateAdminPosterParams,
   type AdminSummary,
 } from "@workspace/api-zod";
-import { db, commuteEventsTable, commuteResponsesTable } from "@workspace/db";
+import {
+  db,
+  commuteEventsTable,
+  commutePosterRegistryTable,
+  commuteResponsesTable,
+} from "@workspace/db";
 
 const router: IRouter = Router();
 const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const;
+const posterSources = ["P01", "P02", "P03", "direct_unknown"] as const;
+type PosterSource = (typeof posterSources)[number];
 const adminPassword = () => process.env.ADMIN_PASSWORD;
 
 type ScheduleDay = {
@@ -28,6 +37,8 @@ function normalizeResponse(row: typeof commuteResponsesTable.$inferSelect) {
     id: row.id,
     createdAt: row.createdAt,
     role: row.role as "driver" | "rider",
+    posterSource: (row.posterSource ?? "direct_unknown") as PosterSource,
+    submissionId: row.submissionId ?? `legacy-${row.id}`,
     livesInSageCreek: row.livesInSageCreek,
     isUofMStudent: row.isUofMStudent,
     schedule: row.schedule as ScheduleDay[],
@@ -53,6 +64,33 @@ function normalizeResponse(row: typeof commuteResponsesTable.$inferSelect) {
     utmCampaign: row.utmCampaign,
     referrer: row.referrer,
   };
+}
+
+function sourceLabel(source: PosterSource): string {
+  return source === "direct_unknown" ? "Direct/Unknown" : source;
+}
+
+function parseDateRange(req: Request): { from?: Date; to?: Date } {
+  const fromValue = typeof req.query.from === "string" ? req.query.from : undefined;
+  const toValue = typeof req.query.to === "string" ? req.query.to : undefined;
+  const from = fromValue && /^\d{4}-\d{2}-\d{2}$/.test(fromValue)
+    ? new Date(`${fromValue}T00:00:00.000Z`)
+    : undefined;
+  const to = toValue && /^\d{4}-\d{2}-\d{2}$/.test(toValue)
+    ? new Date(`${toValue}T00:00:00.000Z`)
+    : undefined;
+  return {
+    from: from && !Number.isNaN(from.valueOf()) ? from : undefined,
+    to: to && !Number.isNaN(to.valueOf()) ? new Date(to.valueOf() + 86_400_000) : undefined,
+  };
+}
+
+function withinDateRange(createdAt: Date, range: { from?: Date; to?: Date }): boolean {
+  return (!range.from || createdAt >= range.from) && (!range.to || createdAt < range.to);
+}
+
+function normalizeSource(value: unknown): PosterSource {
+  return posterSources.includes(value as PosterSource) ? value as PosterSource : "direct_unknown";
 }
 
 function parseTime(value: string): number | null {
@@ -207,7 +245,57 @@ function buildSummary(inputRows: ResponseData[]): AdminSummary {
     potentialOverlap: [...overlap.values()].sort(
       (a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time),
     ),
+    attribution: [],
+    posterRegistry: [],
   };
+}
+
+type EventData = typeof commuteEventsTable.$inferSelect;
+
+type RegistryData = {
+  posterId: PosterSource;
+  locationName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+function buildRegistry(rows: Array<typeof commutePosterRegistryTable.$inferSelect>): RegistryData[] {
+  const saved = new Map(rows.map((row) => [row.posterId, row]));
+  return posterSources.map((posterId) => {
+    const row = saved.get(posterId);
+    return {
+      posterId,
+      locationName: row?.locationName ?? null,
+      latitude: row?.latitude ?? null,
+      longitude: row?.longitude ?? null,
+    };
+  });
+}
+
+function buildAttributionSummary(
+  rows: ResponseData[],
+  events: EventData[],
+  registry: RegistryData[],
+) {
+  return posterSources.map((source) => {
+    const sourceEvents = events.filter((event) => normalizeSource(event.posterSource) === source);
+    const landingEvents = sourceEvents.filter((event) => event.eventName === "landing_viewed");
+    const starts = sourceEvents.filter((event) => event.eventName === "survey_started");
+    const completed = rows.filter((row) => normalizeSource(row.posterSource) === source);
+    const registryEntry = registry.find((entry) => entry.posterId === source);
+    const landingVisits = landingEvents.length;
+    return {
+      ...(registryEntry ?? { posterId: source, locationName: null, latitude: null, longitude: null }),
+      label: sourceLabel(source),
+      landingVisits,
+      estimatedUniqueVisitors: new Set(
+        landingEvents.map((event) => event.anonymousVisitorId).filter(Boolean),
+      ).size,
+      surveyStarts: starts.length,
+      completedSurveys: completed.length,
+      completionRate: landingVisits ? completed.length / landingVisits : 0,
+    };
+  });
 }
 
 function csvCell(value: unknown): string {
@@ -266,14 +354,38 @@ router.post("/responses", async (req, res): Promise<void> => {
     return;
   }
 
+  const existing = await db
+    .select({ id: commuteResponsesTable.id, createdAt: commuteResponsesTable.createdAt })
+    .from(commuteResponsesTable)
+    .where(eq(commuteResponsesTable.submissionId, data.submissionId))
+    .limit(1);
+  if (existing[0]) {
+    res.status(201).json(CreateResponseResponse.parse(existing[0]));
+    return;
+  }
+
   const [created] = await db
     .insert(commuteResponsesTable)
     .values({
       ...data,
       schedule: data.schedule,
     })
+    .onConflictDoNothing({ target: commuteResponsesTable.submissionId })
     .returning({ id: commuteResponsesTable.id, createdAt: commuteResponsesTable.createdAt });
-  res.status(201).json(CreateResponseResponse.parse(created));
+  if (created) {
+    res.status(201).json(CreateResponseResponse.parse(created));
+    return;
+  }
+  const raced = await db
+    .select({ id: commuteResponsesTable.id, createdAt: commuteResponsesTable.createdAt })
+    .from(commuteResponsesTable)
+    .where(eq(commuteResponsesTable.submissionId, data.submissionId))
+    .limit(1);
+  if (!raced[0]) {
+    res.status(500).json({ error: "Could not save the questionnaire response." });
+    return;
+  }
+  res.status(201).json(CreateResponseResponse.parse(raced[0]));
 });
 
 router.post("/events", async (req, res): Promise<void> => {
@@ -282,23 +394,49 @@ router.post("/events", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  await db.insert(commuteEventsTable).values(parsed.data);
+  const data = parsed.data;
+  const dedupeKey = [
+    data.eventName,
+    data.posterSource,
+    data.browserSessionId,
+    data.role ?? "",
+    data.step ?? "",
+  ].join("|");
+  try {
+    await db
+      .insert(commuteEventsTable)
+      .values({ ...data, dedupeKey })
+      .onConflictDoNothing({ target: commuteEventsTable.dedupeKey });
+  } catch (error) {
+    req.log.error({ error }, "Could not record anonymous analytics event");
+  }
   res.sendStatus(204);
 });
 
 router.get("/admin/summary", async (req, res): Promise<void> => {
   if (!requireAdmin(req, res)) return;
-  const rows = (await db.select().from(commuteResponsesTable)).map(normalizeResponse);
-  res.json(GetAdminSummaryResponse.parse(buildSummary(rows)));
+  const range = parseDateRange(req);
+  const rows = (await db.select().from(commuteResponsesTable))
+    .filter((row) => withinDateRange(row.createdAt, range))
+    .map(normalizeResponse);
+  const events = (await db.select().from(commuteEventsTable))
+    .filter((event) => withinDateRange(event.createdAt, range));
+  const registry = buildRegistry(await db.select().from(commutePosterRegistryTable));
+  const summary = buildSummary(rows);
+  summary.attribution = buildAttributionSummary(rows, events, registry);
+  summary.posterRegistry = registry;
+  res.json(GetAdminSummaryResponse.parse(summary));
 });
 
 router.get("/admin/responses", async (req, res): Promise<void> => {
   if (!requireAdmin(req, res)) return;
+  const range = parseDateRange(req);
   const rows = uniqueResponses(
     (await db
       .select()
       .from(commuteResponsesTable)
       .orderBy(desc(commuteResponsesTable.createdAt)))
+      .filter((row) => withinDateRange(row.createdAt, range))
       .map(normalizeResponse),
   );
   res.json(GetAdminResponsesResponse.parse(rows));
@@ -306,15 +444,17 @@ router.get("/admin/responses", async (req, res): Promise<void> => {
 
 router.get("/admin/export.csv", async (req, res): Promise<void> => {
   if (!requireAdmin(req, res)) return;
+  const range = parseDateRange(req);
   const rows = uniqueResponses(
     (await db
       .select()
       .from(commuteResponsesTable)
       .orderBy(asc(commuteResponsesTable.createdAt)))
+      .filter((row) => withinDateRange(row.createdAt, range))
       .map(normalizeResponse),
   );
   const headers = [
-    "id", "createdAt", "role", "livesInSageCreek", "isUofMStudent",
+    "id", "createdAt", "role", "posterSource", "submissionId", "livesInSageCreek", "isUofMStudent",
     ...scheduleCsvHeaders,
     "arrivalFlexibility", "departureFlexibility", "rideDirection", "maxDetour",
     "seats", "maxPickupWalk", "currentTransportMethod", "currentCommuteDuration",
@@ -329,6 +469,34 @@ router.get("/admin/export.csv", async (req, res): Promise<void> => {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", 'attachment; filename="sage-creek-responses.csv"');
   res.send(csv);
+});
+
+router.patch("/admin/posters/:posterId", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  const parsedParams = UpdateAdminPosterParams.safeParse(req.params);
+  const parsedBody = UpdateAdminPosterBody.safeParse(req.body);
+  if (!parsedParams.success || !parsedBody.success || parsedParams.data.posterId === "direct_unknown") {
+    res.status(400).json({ error: "Poster ID, location name, latitude, and longitude are invalid." });
+    return;
+  }
+  const [updated] = await db
+    .insert(commutePosterRegistryTable)
+    .values({
+      posterId: parsedParams.data.posterId,
+      ...parsedBody.data,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: commutePosterRegistryTable.posterId,
+      set: { ...parsedBody.data, updatedAt: new Date() },
+    })
+    .returning();
+  res.json({
+    posterId: updated.posterId as PosterSource,
+    locationName: updated.locationName,
+    latitude: updated.latitude,
+    longitude: updated.longitude,
+  });
 });
 
 export default router;

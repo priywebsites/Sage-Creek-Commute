@@ -31,8 +31,11 @@ export const HealthCheckResponse = zod.object({
 
 
 
+
 export const CreateResponseBody = zod.object({
   "role": zod.enum(['driver', 'rider']),
+  "posterSource": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
+  "submissionId": zod.string().min(1),
   "livesInSageCreek": zod.boolean(),
   "isUofMStudent": zod.boolean(),
   "schedule": zod.array(zod.object({
@@ -73,8 +76,15 @@ export const CreateResponseResponse = zod.object({
 /**
  * @summary Record an anonymous questionnaire event
  */
+
+
+
+
 export const CreateEventBody = zod.object({
-  "eventName": zod.enum(['landing_viewed', 'driver_role_selected', 'rider_role_selected', 'step_reached', 'form_completed']),
+  "eventName": zod.enum(['landing_viewed', 'driver_role_selected', 'rider_role_selected', 'step_reached', 'form_completed', 'survey_started']),
+  "posterSource": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
+  "anonymousVisitorId": zod.string().min(1),
+  "browserSessionId": zod.string().min(1),
   "role": zod.string().nullish(),
   "step": zod.number().nullish()
 })
@@ -85,6 +95,11 @@ export const CreateEventResponse = zod.void()
 /**
  * @summary Get grouped questionnaire results
  */
+export const GetAdminSummaryQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
 export const GetAdminSummaryHeader = zod.object({
   "X-Admin-Password": zod.string()
 })
@@ -136,6 +151,25 @@ export const GetAdminSummaryResponse = zod.object({
   "time": zod.string(),
   "drivers": zod.number(),
   "riders": zod.number()
+})),
+  "attribution": zod.array(zod.object({
+  "posterId": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
+  "locationName": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable()
+}).and(zod.object({
+  "label": zod.string(),
+  "landingVisits": zod.number(),
+  "estimatedUniqueVisitors": zod.number(),
+  "surveyStarts": zod.number(),
+  "completedSurveys": zod.number(),
+  "completionRate": zod.number()
+}))),
+  "posterRegistry": zod.array(zod.object({
+  "posterId": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
+  "locationName": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable()
 }))
 })
 
@@ -143,6 +177,11 @@ export const GetAdminSummaryResponse = zod.object({
 /**
  * @summary List submitted questionnaire responses
  */
+export const GetAdminResponsesQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
 export const GetAdminResponsesHeader = zod.object({
   "X-Admin-Password": zod.string()
 })
@@ -158,8 +197,11 @@ export const GetAdminResponsesHeader = zod.object({
 
 
 
+
 export const GetAdminResponsesResponseItem = zod.object({
   "role": zod.enum(['driver', 'rider']),
+  "posterSource": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
+  "submissionId": zod.string().min(1),
   "livesInSageCreek": zod.boolean(),
   "isUofMStudent": zod.boolean(),
   "schedule": zod.array(zod.object({
@@ -199,10 +241,40 @@ export const GetAdminResponsesResponse = zod.array(GetAdminResponsesResponseItem
 /**
  * @summary Download questionnaire responses as CSV
  */
+export const ExportAdminResponsesQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
 export const ExportAdminResponsesHeader = zod.object({
   "X-Admin-Password": zod.string()
 })
 
 export const ExportAdminResponsesResponse = zod.unknown()
+
+
+/**
+ * @summary Update a poster registry entry
+ */
+export const UpdateAdminPosterParams = zod.object({
+  "posterId": zod.enum(['P01', 'P02', 'P03', 'direct_unknown'])
+})
+
+export const UpdateAdminPosterHeader = zod.object({
+  "X-Admin-Password": zod.string()
+})
+
+export const UpdateAdminPosterBody = zod.object({
+  "locationName": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable()
+})
+
+export const UpdateAdminPosterResponse = zod.object({
+  "posterId": zod.enum(['P01', 'P02', 'P03', 'direct_unknown']),
+  "locationName": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable()
+})
 
 

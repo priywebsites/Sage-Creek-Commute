@@ -5,6 +5,44 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type PosterSource = typeof PosterSource[keyof typeof PosterSource];
+
+
+export const PosterSource = {
+  P01: 'P01',
+  P02: 'P02',
+  P03: 'P03',
+  direct_unknown: 'direct_unknown',
+} as const;
+
+export interface PosterRegistryUpdate {
+  /** @nullable */
+  locationName: string | null;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+}
+
+export interface PosterRegistryItem {
+  posterId: PosterSource;
+  /** @nullable */
+  locationName: string | null;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+}
+
+export type AttributionSummary = PosterRegistryItem & {
+  label: string;
+  landingVisits: number;
+  estimatedUniqueVisitors: number;
+  surveyStarts: number;
+  completedSurveys: number;
+  completionRate: number;
+};
+
 export interface HealthStatus {
   status: string;
 }
@@ -39,6 +77,9 @@ export const ResponseInputRole = {
 
 export interface ResponseInput {
   role: ResponseInputRole;
+  posterSource: PosterSource;
+  /** @minLength 1 */
+  submissionId: string;
   livesInSageCreek: boolean;
   isUofMStudent: boolean;
   /** @minItems 1 */
@@ -100,10 +141,16 @@ export const EventInputEventName = {
   rider_role_selected: 'rider_role_selected',
   step_reached: 'step_reached',
   form_completed: 'form_completed',
+  survey_started: 'survey_started',
 } as const;
 
 export interface EventInput {
   eventName: EventInputEventName;
+  posterSource: PosterSource;
+  /** @minLength 1 */
+  anonymousVisitorId: string;
+  /** @minLength 1 */
+  browserSessionId: string;
   /** @nullable */
   role?: string | null;
   /** @nullable */
@@ -147,7 +194,28 @@ export interface AdminSummary {
   transportMethods: DistributionItem[];
   commuteDurations: DistributionItem[];
   potentialOverlap: ScheduleBucket[];
+  attribution: AttributionSummary[];
+  posterRegistry: PosterRegistryItem[];
 }
 
 export type AdminPasswordParameter = string;
+
+export type FromDateParameter = string;
+
+export type ToDateParameter = string;
+
+export type GetAdminSummaryParams = {
+from?: FromDateParameter;
+to?: ToDateParameter;
+};
+
+export type GetAdminResponsesParams = {
+from?: FromDateParameter;
+to?: ToDateParameter;
+};
+
+export type ExportAdminResponsesParams = {
+from?: FromDateParameter;
+to?: ToDateParameter;
+};
 
