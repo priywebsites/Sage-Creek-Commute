@@ -1,5 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
+import QRCode from "qrcode";
 import {
   CreateEventBody,
   CreateResponseBody,
@@ -20,6 +22,7 @@ import {
 const router: IRouter = Router();
 const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"] as const;
 const posterSources = ["P01", "P02", "P03", "direct_unknown"] as const;
+const qrPosterSources = ["P01", "P02", "P03"] as const;
 type PosterSource = (typeof posterSources)[number];
 const adminPassword = () => process.env.ADMIN_PASSWORD;
 
@@ -173,11 +176,56 @@ function requireAdmin(req: Request, res: Response): boolean {
     res.status(503).json({ error: "Admin password is not configured." });
     return false;
   }
-  if (!supplied || supplied !== configured) {
+  if (!supplied || !secretsMatch(supplied, configured)) {
     res.status(401).json({ error: "That admin password is not correct." });
     return false;
   }
   return true;
+}
+
+function secretsMatch(supplied: string, configured: string): boolean {
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(supplied), digest(configured));
+}
+
+function getPublicAppUrl(req: Request): URL | null {
+  const configured = process.env.PUBLIC_APP_URL?.trim();
+  if (configured) {
+    try {
+      return new URL(configured);
+    } catch {
+      return null;
+    }
+  }
+
+  if (process.env.NODE_ENV === "production") return null;
+
+  const forwardedProtocol = req.header("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = req.header("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost ?? req.header("host");
+  return host ? new URL(`${forwardedProtocol ?? req.protocol}://${host}`) : null;
+}
+
+async function createPosterQrSvg(posterId: (typeof qrPosterSources)[number], url: string) {
+  const generated = await QRCode.toString(url, {
+    type: "svg",
+    errorCorrectionLevel: "M",
+    margin: 4,
+    color: { dark: "#000000", light: "#FFFFFF" },
+  });
+  const viewBox = generated.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  if (!viewBox) throw new Error(`Could not read generated QR viewBox for ${posterId}`);
+  const width = Number(viewBox[1]);
+  const height = Number(viewBox[2]);
+  return generated
+    .replace(
+      `viewBox="0 0 ${viewBox[1]} ${viewBox[2]}"`,
+      `viewBox="0 0 ${width} ${height + 14}"`,
+    )
+    .replace(
+      "</svg>",
+      `<text x="${width / 2}" y="${height + 10}" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" fill="#000000">${posterId}</text></svg>`,
+    );
 }
 
 function distributions(values: Array<string | null | undefined>) {
@@ -361,6 +409,30 @@ function csvValue(row: ResponseData, header: string): unknown {
   }
   return row[header as keyof ResponseData];
 }
+
+router.get("/posters/:posterId/qr.svg", async (req, res): Promise<void> => {
+  const posterId = req.params.posterId;
+  if (!qrPosterSources.includes(posterId as (typeof qrPosterSources)[number])) {
+    res.status(404).json({ error: "Poster not found." });
+    return;
+  }
+
+  const publicAppUrl = getPublicAppUrl(req);
+  if (!publicAppUrl) {
+    res.status(503).json({ error: "PUBLIC_APP_URL is not configured correctly." });
+    return;
+  }
+
+  const landingUrl = new URL("/", publicAppUrl);
+  landingUrl.searchParams.set("source", posterId);
+  const svg = await createPosterQrSvg(
+    posterId as (typeof qrPosterSources)[number],
+    landingUrl.toString(),
+  );
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  res.send(svg);
+});
 
 router.post("/responses", async (req, res): Promise<void> => {
   const parsed = CreateResponseBody.safeParse(req.body);

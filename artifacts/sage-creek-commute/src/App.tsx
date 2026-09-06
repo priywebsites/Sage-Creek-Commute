@@ -57,7 +57,9 @@ const anonymousVisitorKey = 'sage_creek_commute_anonymous_visitor';
 const browserSessionKey = 'sage_creek_commute_browser_session';
 const selectedRoleKey = 'sage_creek_commute_selected_role_v2';
 const surveyDraftKey = 'sage_creek_commute_survey_draft_v2';
-const canonicalSurveyUrl = 'https://sagecreek-commutes.replit.app/questionnaire';
+const canonicalSurveyUrl = typeof window === 'undefined'
+  ? '/questionnaire'
+  : new URL('/questionnaire', window.location.origin).toString();
 
 const days: Array<{ key: DayName; label: string }> = [
   { key: 'monday', label: 'Mon' },
@@ -1331,7 +1333,7 @@ function PosterAttributionSection({
             <strong>{(item.completionRate * 100).toFixed(1)}%</strong>
             {item.posterId === 'direct_unknown'
               ? <span className="data-note">—</span>
-              : <a className="qr-download-link" href={`${import.meta.env.BASE_URL}qr/poster-${item.posterId.slice(1).toLowerCase()}.svg`} download={`poster-${item.posterId.slice(1).toLowerCase()}.svg`}>Download</a>}
+              : <a className="qr-download-link" href={`/api/posters/${item.posterId}/qr.svg`} download={`poster-${item.posterId.slice(1).toLowerCase()}.svg`}>Download</a>}
           </div>
         ))}
       </div>
