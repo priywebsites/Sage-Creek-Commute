@@ -1,0 +1,425 @@
+{
+  "id": "1b0b38a5-edb2-464f-bec1-d23eb68b202d",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.commute_events": {
+      "name": "commute_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "event_name": {
+          "name": "event_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "step": {
+          "name": "step",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "poster_source": {
+          "name": "poster_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anonymous_visitor_id": {
+          "name": "anonymous_visitor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "browser_session_id": {
+          "name": "browser_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "commute_events_dedupe_key_unique": {
+          "name": "commute_events_dedupe_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "dedupe_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.commute_poster_registry": {
+      "name": "commute_poster_registry",
+      "schema": "",
+      "columns": {
+        "poster_id": {
+          "name": "poster_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "location_name": {
+          "name": "location_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.commute_responses": {
+      "name": "commute_responses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "survey_version": {
+          "name": "survey_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'v1'"
+        },
+        "lives_in_sage_creek": {
+          "name": "lives_in_sage_creek",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lives_outside_sage_creek": {
+          "name": "lives_outside_sage_creek",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "neighborhood": {
+          "name": "neighborhood",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "student_status": {
+          "name": "student_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'legacy'"
+        },
+        "is_uofm_student": {
+          "name": "is_uofm_student",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "schedule": {
+          "name": "schedule",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekly_trip_count": {
+          "name": "weekly_trip_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arrival_flexibility": {
+          "name": "arrival_flexibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "departure_flexibility": {
+          "name": "departure_flexibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ride_direction": {
+          "name": "ride_direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_detour": {
+          "name": "max_detour",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seats": {
+          "name": "seats",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "max_pickup_walk": {
+          "name": "max_pickup_walk",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_transport_method": {
+          "name": "current_transport_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_commute_duration": {
+          "name": "current_commute_duration",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "minimum_monthly_compensation": {
+          "name": "minimum_monthly_compensation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maximum_monthly_willingness_to_pay": {
+          "name": "maximum_monthly_willingness_to_pay",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "driver_rate_cents": {
+          "name": "driver_rate_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "driver_rate_selection": {
+          "name": "driver_rate_selection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rider_price_cents": {
+          "name": "rider_price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rider_price_selection": {
+          "name": "rider_price_selection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "schedule_change_frequency": {
+          "name": "schedule_change_frequency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dealbreaker": {
+          "name": "dealbreaker",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dealbreaker_other": {
+          "name": "dealbreaker_other",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "final_concern": {
+          "name": "final_concern",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "final_concern_other": {
+          "name": "final_concern_other",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intent_level": {
+          "name": "intent_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_method": {
+          "name": "contact_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "contact_permission": {
+          "name": "contact_permission",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "prefers_text": {
+          "name": "prefers_text",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "utm_source": {
+          "name": "utm_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utm_medium": {
+          "name": "utm_medium",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utm_campaign": {
+          "name": "utm_campaign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referrer": {
+          "name": "referrer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "poster_source": {
+          "name": "poster_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submission_id": {
+          "name": "submission_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "commute_responses_submission_id_unique": {
+          "name": "commute_responses_submission_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "submission_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

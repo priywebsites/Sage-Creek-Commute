@@ -10,6 +10,16 @@ out-tsc
 
 # dependencies
 node_modules
+.pnpm-store/
+
+# local configuration and Vercel state
+.env
+.env.*
+!.env.example
+.vercel/
+
+# logs
+*.log
 
 # IDEs and editors
 /.idea
@@ -44,6 +54,6 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# local tool state
 .cache/
 .local/
